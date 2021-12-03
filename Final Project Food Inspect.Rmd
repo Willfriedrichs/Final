@@ -26,6 +26,8 @@ knitr::opts_chunk$set(echo = TRUE,
 	echo=TRUE)
 
 library(tidyverse)
+library(tidycensus)
+library(dplyr)
 library(sf)
 library(RSocrata)
 library(viridis)
@@ -82,6 +84,46 @@ FoodInspect <-
 
 
 ```
+
+
+Census data follows
+
+```{r ACS Data, results = FALSE, message=FALSE,warning=FALSE, cache = FALSE}
+# Create a list of all 2019 acs 5-year variables
+varlist_2018 <- load_variables(2019, "acs5", cache = TRUE)
+
+# Census API key
+census_api_key("94efffd19b56ad527e379faea1653ee74dc3de4a",overwrite = TRUE)
+
+
+# Grab nine specific tract-level variables using the tidycensus "get_acs" command for each tract in Boulder County in 2019
+tracts18 <- get_acs(geography = "tract",            
+                    variables = c("B01001_001","B23025_004","B06011_001",
+                                  "B06012_002","B02001_002","B25002_003",
+                                  "B25013_006","B08013_001","B15012_009"), 
+                    year=2018, 
+                    state=17, 
+                    county=031,
+                    output = "wide",
+                    geometry=TRUE) %>% 
+            st_transform('ESRI:102271') %>%
+            dplyr::select( c("GEOID","B01001_001E","B23025_004E","B06011_001E",
+                      "B06012_002E","B02001_002E","B25002_003E",
+                    "B25013_006E","B08013_001E","B15012_009E","geometry") ) %>%
+            rename(tot_pop = "B01001_001E",
+                   empl_pop = "B23025_004E",
+                   med_inc = "B06011_001E",
+                   pvty_pop = "B06012_002E",
+                   white_pop = "B02001_002E",
+                   vac_occ = "B25002_003E",
+                   own_occ_bach = "B25013_006E",
+                   tt_work = "B08013_001E",
+                   sci_bach = "B15012_009E") %>%
+            mutate(area = as.numeric(st_area(geometry)/1000000))%>%
+            mutate(pop_den = tot_pop/area)
+
+```
+
 
 ## Visualizing Theft Data
 
