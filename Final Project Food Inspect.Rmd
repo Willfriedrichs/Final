@@ -45,7 +45,7 @@ source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-L
 ```
 
 ## Read in Data from Chicago
-
+i 76
 We .
 
 
@@ -56,11 +56,6 @@ chicagoBoundary <-
   st_read(file.path(root.dir,"/Chapter5/chicagoBoundary.geojson")) %>%
   st_transform('ESRI:102271') 
 
-## Neighborhoods to use 
-neighborhoods <- 
-  st_read("https://raw.githubusercontent.com/blackmad/neighborhoods/master/chicago.geojson") %>%
-  st_transform(st_crs(fishnet)) 
-
 # Create a fishnet containing 500 by 500 foot squares over the boundary of Chicago.
 fishnet <- 
   st_make_grid(chicagoBoundary,
@@ -69,6 +64,11 @@ fishnet <-
   .[chicagoBoundary] %>%            # <- MDH Added
   st_sf() %>%
   mutate(uniqueID = rownames(.))
+
+## Neighborhoods to use 
+neighborhoods <- 
+  st_read("https://raw.githubusercontent.com/blackmad/neighborhoods/master/chicago.geojson") %>%
+  st_transform(st_crs(fishnet))
 
 FoodInspect <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
@@ -117,15 +117,16 @@ Inspections are then attributed to each fishnet cell.
 ## add a value of 1 to each crime, sum them with aggregate
 inspect_net <- 
   dplyr::select(FoodInspect) %>% 
-  mutate(CountInspect = 1) %>% 
+  mutate(countInspect = 1) %>% 
   aggregate(., fishnet, sum) %>%
-  mutate(countTheft = replace_na(CountInspect, 0),
+  mutate(countInspect = replace_na(countInspect, 0),
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), 
                        size=nrow(fishnet), replace = TRUE))
 
+
 ggplot() +
-  geom_sf(data = inspect_net, aes(fill = CountInspect), color = NA) +
+  geom_sf(data = inspect_net, aes(fill = countInspect), color = NA) +
   scale_fill_viridis() +
   labs(title = "Count of Inspections for the Fishnet") +
   mapTheme()
@@ -141,7 +142,7 @@ Stuff
 
 
 ## using Socrata again
-RodentBait <- 
+rodentBait <- 
   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Rodent-Baiting-Historic   al/97t6-zrhs") %>%
     mutate(year = substr(creation_date,1,4)) %>% filter(year == "2018") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
@@ -150,7 +151,7 @@ RodentBait <-
     st_transform(st_crs(fishnet)) %>%
     mutate(Legend = "Rodent_Bait")
 
-Sanitation311 <-
+sanitation311 <-
   read.socrata(paste0("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Sanitation-Code-Complaints-Hi/me59-5fac")) %>%
   mutate(year = substr(creation_date,1,4)) %>%
   filter(year == "2018") %>%
@@ -163,10 +164,10 @@ Sanitation311 <-
   mutate(Legend = "Sanitation_311")
 
 
-OrdinanceViolation <- 
+ordinanceViolation <- 
   read.socrata("https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv") %>%
-    mutate(year = substr(violation_date,1,4)) %>% filter(year == "2018") %>%
-    dplyr::select(Y = latitude, X = longitude) %>%
+    mutate(year = substr(VIOLATION.DATE,1,4)) %>% filter(year == "2018") %>%
+    dplyr::select(Y = LATITUDE, X = LONGITUDE) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
@@ -213,8 +214,16 @@ liquorRetail <-
   mutate(Legend = "Liquor_Retail")
 
 
+foodInspectFail <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2017") %>%
+    # filter(results=="Fail") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    mutate(Legend = "Food_Inspect")
 
-    
     
 
 
@@ -223,7 +232,7 @@ liquorRetail <-
 The multi-map below shows risk factors on a map.
 
 ```{r}
-vars_net <- rbind(abandonCars, graffiti, streetLightsOut, liquorRetail, rodentBait, foodInspectFail)   %>%
+vars_net <- rbind(rodentBait, sanitation311, ordinanceViolation, graffiti, liquorRetail, foodInspectFail)   %>%
   st_join(., fishnet, join=st_within) %>%
   st_drop_geometry() %>%
   group_by(uniqueID, Legend) %>%
@@ -267,10 +276,22 @@ The next chunk of code converts risk factors to nearest neighbor distances.  Thi
 st_c    <- st_coordinates
 st_coid <- st_centroid
 
-## create NN from abandoned cars
+## create NN from rodent bait
 vars_net <- vars_net %>%
-    mutate(Abandoned_Cars.nn = nn_function(st_c(st_coid(vars_net)), 
-                                           st_c(abandonCars),
+    mutate(rodent_Bait.nn = nn_function(st_c(st_coid(vars_net)), 
+                                           st_c(rodentBait),
+                                           k = 3))
+
+## create NN from sanitation 311
+vars_net <- vars_net %>%
+    mutate(sanitation_311.nn = nn_function(st_c(st_coid(vars_net)), 
+                                           st_c(sanitation311),
+                                           k = 3))
+
+## create NN from ordinance violations
+vars_net <- vars_net %>%
+    mutate(ordinance_Violation.nn = nn_function(st_c(st_coid(vars_net)), 
+                                           st_c(ordinanceViolation),
                                            k = 3))
 
 ## create NN from graffiti
@@ -279,22 +300,10 @@ vars_net <- vars_net %>%
                                            st_c(graffiti),
                                            k = 3))
 
-## create NN from streetLights Out
-vars_net <- vars_net %>%
-    mutate(Street_Lights_Out.nn = nn_function(st_c(st_coid(vars_net)), 
-                                           st_c(streetLightsOut),
-                                           k = 3))
-
 ## create NN from liquorRetail
 vars_net <- vars_net %>%
-    mutate(Liquor_Retail.nn = nn_function(st_c(st_coid(vars_net)), 
+    mutate(liquor_Retail.nn = nn_function(st_c(st_coid(vars_net)), 
                                            st_c(liquorRetail),
-                                           k = 3))
-
-## create NN from Rodent_Bait
-vars_net <- vars_net %>%
-    mutate(Rodent_Bait.nn = nn_function(st_c(st_coid(vars_net)), 
-                                           st_c(rodentBait),
                                            k = 3))
 
 ## create NN from food_Inspect_Fail
@@ -353,7 +362,7 @@ Since the counts were aggregated to each cell by `uniqueID` we can use that to j
 ```{r}
 ## important to drop the geometry from joining features
 final_net <-
-  left_join(crime_net, st_drop_geometry(vars_net), by="uniqueID") 
+  left_join(inspect_net, st_drop_geometry(vars_net), by="uniqueID") 
 
 ```
 
@@ -363,18 +372,18 @@ We use spatial joins to attach *centroids* of fishnets to polygon for neighborho
 
 ```{r}
 
+
+
 final_net <-
   st_centroid(final_net) %>%
     st_join(dplyr::select(neighborhoods, name), by = "uniqueID") %>%
-    st_join(dplyr::select(policeDistricts, District), by = "uniqueID") %>%
       st_drop_geometry() %>%
       left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
       st_sf() %>%
   na.omit()
 
 # for live demo
-mapview::mapview(final_net, zcol = "District")
-# mapview::mapview(final_net, zcol = "name.x")
+mapview::mapview(final_net, zcol = "name")
 
 ```
 
@@ -401,14 +410,14 @@ The grid map below shows the following four elements:
 
 ```{r}
 ## see ?localmoran
-local_morans <- localmoran(final_net$countTheft, final_net.weights, zero.policy=TRUE) %>% 
+local_morans <- localmoran(final_net$countInspect, final_net.weights, zero.policy=TRUE) %>% 
   as.data.frame()
 
 # join local Moran's I results to fishnet
 final_net.localMorans <- 
   cbind(local_morans, as.data.frame(final_net)) %>% 
   st_sf() %>%
-  dplyr::select(countTheft = countTheft, 
+  dplyr::select(countInspect = countInspect, 
                 Local_Morans_I = Ii, 
                 P_Value = `Pr(z != E(Ii))`) %>%
   mutate(Significant_Hotspots = ifelse(P_Value <= 0.001, 1, 0)) %>%
@@ -447,7 +456,7 @@ for(i in vars){
       labs(title=i) +
       mapTheme(title_size = 14) + theme(legend.position="bottom")}
 
-do.call(grid.arrange,c(varList2, ncol = 4, top = "Local Morans I statistics, Theft"))
+do.call(grid.arrange,c(varList2, ncol = 4, top = "Local Morans I statistics, Inspect"))
 ```
 
 ## Distance to Hot spot
@@ -457,12 +466,12 @@ Once again, we'll use the nearest neighbor function to find the distance to a ho
 ```{r}
 # generates warning from NN
 final_net <- final_net %>% 
-  mutate(Theft.isSig = 
+  mutate(Inspect.isSig = 
            ifelse(local_morans[,5] <= 0.001, 1, 0)) %>%
-  mutate(Theft.isSig.dist = 
+  mutate(Inspect.isSig.dist = 
            nn_function(st_c(st_coid(final_net)),
                        st_c(st_coid(filter(final_net, 
-                                           Theft.isSig == 1))), 
+                                           Inspect.isSig == 1))), 
                        k = 1))
 
 ```
@@ -471,8 +480,8 @@ final_net <- final_net %>%
 
 ```{r}
 ggplot() +
-      geom_sf(data = final_net, aes(fill=Theft.isSig.dist), colour=NA) +
-      scale_fill_viridis(name="Theft.isSig.dist") +
+      geom_sf(data = final_net, aes(fill=Inspect.isSig.dist), colour=NA) +
+      scale_fill_viridis(name="Inspect.isSig.dist") +
       labs(title="Distance to Highly Significant Theft Hotspots") +
       mapTheme()
 ```
@@ -495,23 +504,23 @@ The plots below shows correlations between various features of risk factors and 
 ```{r, fig.width=10, fig.height=20}
 correlation.long <-
   st_drop_geometry(final_net) %>%
-  dplyr::select(-uniqueID, -cvID, -name, -District, -loopDistance, -Theft.isSig, -Theft.isSig.dist) %>%
-  gather(Variable, Value, -countTheft)
+  dplyr::select(-uniqueID, -cvID, -name, -loopDistance, -Inspect.isSig, -Inspect.isSig.dist) %>%
+  gather(Variable, Value, -countInspect)
 
 
 correlation.cor <-
   correlation.long %>%
   group_by(Variable) %>%
-  summarize(correlation = cor(Value, countTheft, use = "complete.obs"))
+  summarize(correlation = cor(Value, countInspect, use = "complete.obs"))
 
-ggplot(correlation.long, aes(Value, countTheft)) +
+ggplot(correlation.long, aes(Value, countInspect)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor,
   aes(label = paste("r =", round(correlation, 2))),
   x=-Inf, y=Inf, vjust = 1.5, hjust = -.1) +
 geom_smooth(method = "lm", se = FALSE, colour = "black") +
 facet_wrap(~Variable, ncol = 2, scales = "free") +
-labs(title = "Theft count as a function of risk factors") +
+labs(title = "Failed inspection count as a function of risk factors") +
 plotTheme()
 
 
@@ -522,123 +531,154 @@ The histogram below provides a view of the frequency of the dependent variables.
 
 ```{r message=FALSE, warning=FALSE}
 # calculate errors by NEIGHBORHOOD
-HistogramTheft <- 
+HistogramInspect <-
   final_net %>%
-    group_by(cvID) %>% 
-    summarize(countTheft_sum = sum(countTheft, na.rm = T),
-              countTheft_mean = mean(countTheft, na.rm = T)) %>%
+    group_by(cvID) %>%
+    summarize(countInspect_sum = sum(countInspect, na.rm = T),
+              countInspect_mean = mean(countInspect, na.rm = T)) %>%
   ungroup()
 
-# error_by_reg_and_fold %>% 
+# error_by_reg_and_fold %>%
 #   arrange(desc(MAE))
-# error_by_reg_and_fold %>% 
+# error_by_reg_and_fold %>%
 #   arrange(MAE)
 
 ## plot histogram of theft
-HistogramTheft %>%
-  ggplot(aes(countTheft_sum)) + 
+HistogramInspect %>%
+  ggplot(aes(countInspect_sum)) +
     geom_histogram(bins = 30, colour="black", fill = "#FDE725FF") +
-    scale_x_continuous(breaks = seq(30, 475, by = 25)) + 
-    labs(title="Distribution of Theft Counts", subtitle = "Chicago, IL",
-         x="Theft Count", y="Count") 
+    scale_x_continuous(breaks = seq(30, 475, by = 25)) +
+    labs(title="Distribution of Failed Inspection Counts", subtitle = "Chicago, IL",
+         x="Theft Count", y="Count")
 
 
 ```
 
 ## Modeling
 
-The model below uses all six risk factors as nearest neighbor functions, along with spatial features where theft is significant, as independent variables.  Count of theft is taken as the dependent variable. The model cycles through each neighborhood as a hold out, then trains on the remaining cells.  Cross-validation is then used to generate predictions for the hold out. 
+The model below uses all six risk factors as nearest neighbor functions, along with spatial features where theft is significant, as independent variables.  Count of theft is taken as the dependent variable. The model cycles through each neighborhood as a hold out, then trains on the remaining cells.  Cross-validation is then used to generate predictions for the hold out.
 
-We generate four variations of the model: risk factors with and without spatial features, k-fold and spatial cross-validation.  
+We generate four variations of the model: risk factors with and without spatial features, k-fold and spatial cross-validation.
 
 ```{r, results='hide'}
+
+# necessary workaround for hardcoded "countBurglaries" 
+# redefine function
+remove(crossValidate)
+crossValidate <- function(dataset, id, dependentVariable, indVariables) {
+
+ allPredictions <- data.frame()
+ cvID_list <- unique(dataset[[id]])
+
+ for (i in cvID_list) {
+ 
+  thisFold <- i
+  #cat("This hold out fold is", thisFold, "\n")
+ 
+  fold.train <- filter(dataset, dataset[[id]] != thisFold) %>% as.data.frame() %>%
+   dplyr::select(id, geometry, indVariables, dependentVariable)
+  fold.test <- filter(dataset, dataset[[id]] == thisFold) %>% as.data.frame() %>%
+   dplyr::select(id, geometry, indVariables, dependentVariable)
+ 
+  regression <-
+    glm(paste0(dependentVariable,"~."), family = "poisson",
+     data = fold.train %>%
+      dplyr::select(-geometry, -id))
+ 
+  thisPrediction <-
+   mutate(fold.test, Prediction = predict(regression, fold.test, type = "response"))
+ 
+  allPredictions <-
+   rbind(allPredictions, thisPrediction)
+ 
+ }
+ return(st_sf(allPredictions))
+}
+
+
 
 # View(crossValidate)
 
 ## define independent variables
-reg.ss.vars <- c("Abandoned_Cars.nn", "graffiti.nn","food_Inspect_Fail.nn", "Liquor_Retail.nn", "Abandoned_Cars.nn", "Rodent_Bait.nn", "Street_Lights_Out.nn", "Theft.isSig", "Theft.isSig.dist", "loopDistance")
-
+reg.ss.vars <- c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "Inspect.isSig", "Inspect.isSig.dist", "loopDistance")
 
 ## define independent variables with spatial features
 reg.vars <-
-c("Abandoned_Cars.nn", "graffiti.nn","food_Inspect_Fail.nn", "Liquor_Retail.nn", "Abandoned_Cars.nn", "Rodent_Bait.nn", "Street_Lights_Out.nn")
-
-
-
+c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn")
 
 ## RUN REGRESSIONS
 reg.ss.spatialCV <- crossValidate(
-  dataset = dplyr::rename(final_net, countBurglaries = countTheft),
-  id = "name",                           
-  dependentVariable = "countBurglaries",
+  dataset = dplyr::rename(final_net, countFailures = countInspect),
+  id = "name",
+  dependentVariable = "countFailures",
   indVariables = reg.ss.vars) %>%
-    dplyr::select(cvID = name, countBurglaries, Prediction, geometry)
+    dplyr::select(cvID = name, countFailures, Prediction, geometry)
 
 
 reg.cv <- crossValidate(
-  dataset = dplyr::rename(final_net, countBurglaries = countTheft),
+  dataset = dplyr::rename(final_net, countFailures = countInspect),
   id = "cvID",
-  dependentVariable = "countBurglaries",
+  dependentVariable = "countFailures",
   indVariables = reg.vars) %>%
-    dplyr::select(cvID = cvID, countBurglaries, Prediction, geometry)
+    dplyr::select(cvID = cvID, countFailures, Prediction, geometry)
 
 
 reg.ss.cv <- crossValidate(
-  dataset = dplyr::rename(final_net, countBurglaries = countTheft),
+  dataset = dplyr::rename(final_net, countFailures = countInspect),
   id = "cvID",
-  dependentVariable = "countBurglaries",
+  dependentVariable = "countFailures",
   indVariables = reg.ss.vars) %>%
-  dplyr::select(cvID = cvID, countBurglaries, Prediction, geometry)
+  dplyr::select(cvID = cvID, countFailures, Prediction, geometry)
 
 
 reg.spatialCV <- crossValidate(
-  dataset = dplyr::rename(final_net, countBurglaries = countTheft),
+  dataset = dplyr::rename(final_net, countFailures = countInspect),
   id = "name",
-  dependentVariable = "countBurglaries",
+  dependentVariable = "countFailures",
   indVariables = reg.vars) %>%
-  dplyr::select(cvID = name, countBurglaries, Prediction, geometry)
+  dplyr::select(cvID = name, countFailures, Prediction, geometry)
 
 ```
 
 ### Cross-validation
 
-Model errors are plotted in a histogram below.  The mode of mean absolute errors is 2 thefts.  The model can benefit from further refinement based on the presence of neighborhoods with significant errors.  Most grievous errors occur in neighborhoods near the Loop and the touristy Millennium Park, presumably areas with high prevelance of theft under $500.  
+Model errors are plotted in a histogram below.  The mode of mean absolute errors is 2 thefts.  The model can benefit from further refinement based on the presence of neighborhoods with significant errors.  Most grievous errors occur in neighborhoods near the Loop and the touristy Millennium Park, presumably areas with high prevelance of theft under $500.
 
 Comparing mean errors between models shows that spatial features improve our models significantly, compared to using just the risk factors.  The comparison map confirms this finding.
 
 ```{r}
 reg.summary <-rbind(
-  mutate(reg.cv, 
-  Error = Prediction - countBurglaries,
+  mutate(reg.cv,
+  Error = Prediction - countFailures,
   Regression = "Random k-fold CV: Just Risk Factors"),
 
   mutate(reg.ss.cv,
-  Error = Prediction - countBurglaries,
+  Error = Prediction - countFailures,
   Regression = "Random k-fold CV: Spatial Process"),
 
   mutate(reg.spatialCV,
-  Error = Prediction - countBurglaries,
+  Error = Prediction - countFailures,
   Regression = "Spatial LOGO-CV: Just Risk Factors"),
 
   mutate(reg.ss.spatialCV,
-  Error = Prediction - countBurglaries,
+  Error = Prediction - countFailures,
   Regression = "Spatial LOGO-CV: Spatial Process")) %>%
 st_sf()
 
 
 # calculate errors by NEIGHBORHOOD
-error_by_reg_and_fold <- 
+error_by_reg_and_fold <-
   reg.summary %>%
   group_by(Regression, cvID) %>%
-    summarize(Mean_Error = mean(Prediction - countBurglaries, na.rm = T),
+    summarize(Mean_Error = mean(Prediction - countFailures, na.rm = T),
               MAE = mean(abs(Mean_Error), na.rm = T),
               SD_MAE = mean(abs(Mean_Error), na.rm = T)) %>%
   ungroup()
 
-error_by_reg_and_fold %>% 
+error_by_reg_and_fold %>%
   arrange(desc(MAE))
 
-# error_by_reg_and_fold %>% 
+# error_by_reg_and_fold %>%
 #   arrange(MAE)
 
 ## plot histogram of OOF (out of fold) errors
@@ -705,21 +745,21 @@ Next we'll use kernel density with varying search radii: 1000, 1500 and 2000 fee
 
 ```{r}
 # demo of kernel width
-theft_ppp <- as.ppp(st_coordinates(theft), W = st_bbox(final_net))
-theft_KD.1000 <- spatstat.core::density.ppp(theft_ppp, 1000)
-theft_KD.1500 <- spatstat.core::density.ppp(theft_ppp, 1500)
-theft_KD.2000 <- spatstat.core::density.ppp(theft_ppp, 2000)
-theft_KD.df <- rbind(
-  mutate(data.frame(rasterToPoints(mask(raster(theft_KD.1000), as(neighborhoods, 'Spatial')))), Legend = "1000 Ft."),
-  mutate(data.frame(rasterToPoints(mask(raster(theft_KD.1500), as(neighborhoods, 'Spatial')))), Legend = "1500 Ft."),
-  mutate(data.frame(rasterToPoints(mask(raster(theft_KD.2000), as(neighborhoods, 'Spatial')))), Legend = "2000 Ft.")) 
+inspect_ppp <- as.ppp(st_coordinates(FoodInspect), W = st_bbox(final_net))
+inspect_KD.1000 <- spatstat.core::density.ppp(inspect_ppp, 1000)
+inspect_KD.1500 <- spatstat.core::density.ppp(inspect_ppp, 1500)
+inspect_KD.2000 <- spatstat.core::density.ppp(inspect_ppp, 2000)
+inspect_KD.df <- rbind(
+  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.1000), as(neighborhoods, 'Spatial')))), Legend = "1000 Ft."),
+  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.1500), as(neighborhoods, 'Spatial')))), Legend = "1500 Ft."),
+  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.2000), as(neighborhoods, 'Spatial')))), Legend = "2000 Ft."))
 
-theft_KD.df$Legend <- factor(theft_KD.df$Legend, levels = c("1000 Ft.", "1500 Ft.", "2000 Ft."))
+inspect_KD.df$Legend <- factor(inspect_KD.df$Legend, levels = c("1000 Ft.", "1500 Ft.", "2000 Ft."))
 
-ggplot(data=theft_KD.df, aes(x=x, y=y)) +
-  geom_raster(aes(fill=layer)) + 
+ggplot(data=inspect_KD.df, aes(x=x, y=y)) +
+  geom_raster(aes(fill=layer)) +
   facet_wrap(~Legend) +
-  coord_sf(crs=st_crs(final_net)) + 
+  coord_sf(crs=st_crs(final_net)) +
   scale_fill_viridis(name="Density") +
   labs(title = "Kernel density with 3 different search radii") +
   mapTheme(title_size = 14)
@@ -730,12 +770,12 @@ Kernel density can be viewed on the fishnet with 1500 random theft observations.
 
 ```{r}
 
-as.data.frame(theft_KD.1000) %>%
+as.data.frame(inspect_KD.1000) %>%
   st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
   aggregate(., final_net, mean) %>%
    ggplot() +
      geom_sf(aes(fill=value)) +
-     geom_sf(data = sample_n(theft, 1500), size = .5) +
+     geom_sf(data = sample_n(FoodInspect, 1500), size = .5) +
      scale_fill_viridis(name = "Density") +
      labs(title = "Kernel density of 2017 thefts") +
      mapTheme(title_size = 14)
@@ -743,23 +783,18 @@ as.data.frame(theft_KD.1000) %>%
 
 ## Get 2018 crime data
 
-To evaluate the generalizability of our model we'll apply our predictions and compare the results to 2018 theft statistics. 
+To evaluate the generalizability of our model we'll apply our predictions and compare the results to 2018 theft statistics.
 
 ```{r, results = FALSE}
-theft18 <- 
-  read.socrata("https://data.cityofchicago.org/Public-Safety/Crimes-2018/3i3m-jwuy") %>% 
-  filter(Primary.Type == "THEFT" & Description == "$500 AND UNDER") %>%
-  mutate(x = gsub("[()]", "", Location)) %>%
-  separate(x,into= c("Y","X"), sep=",") %>%
-  mutate(X = as.numeric(X),
-         Y = as.numeric(Y)) %>% 
-  na.omit %>%
-  st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-  st_transform('ESRI:102271') %>% 
-  distinct() %>%
-  .[fishnet,]
-
-
+FoodInspect19 <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2019") %>%
+    # filter(results=="Fail") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    mutate(Legend = "Food_Inspect")
 ```
 
 ### Generalizability across Race Contexts
@@ -767,6 +802,9 @@ theft18 <-
 ACS data allows us to evaluate generalizability by race contexts. The chunk below compares errors for majority white versus majority non-white neighborhoods.  Table below shows that we are generally under-predicting in non-white neighborhoods and over-predicting in majority white neighborhoods. Additionally, the model with spatial process generates smaller errors across neighborhood contexts.
 
 ```{r, include=FALSE}
+
+census_api_key("94efffd19b56ad527e379faea1653ee74dc3de4a",overwrite = TRUE)
+
 tracts18 <-
   get_acs(geography = "tract",
   variables = c("B01001_001E","B01001A_001E"),
@@ -802,7 +840,7 @@ kable_styling("striped", full_width = F)
 
 
 ```{r}
-theft_KDE_sf <- as.data.frame(theft_KD.1000) %>%
+inspect_KDE_sf <- as.data.frame(inspect_KD.1000) %>%
   st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
   aggregate(., final_net, mean) %>%
   mutate(label = "Kernel Density",
@@ -815,15 +853,15 @@ theft_KDE_sf <- as.data.frame(theft_KD.1000) %>%
            Risk_Category >= 1 & Risk_Category  <= 29 ~ "1% to 29%")) %>%
   cbind(
     aggregate(
-      dplyr::select(theft18) %>% mutate(theftCount = 1), ., sum) %>%
-    mutate(theftCount = replace_na(theftCount, 0))) %>%
-  dplyr::select(label, Risk_Category, theftCount)
+      dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>%
+    mutate(inspectCount = replace_na(inspectCount, 0))) %>%
+  dplyr::select(label, Risk_Category, inspectCount)
 ```
 
 
 
 ```{r}
-theft_risk_sf <-
+inspect_risk_sf <-
   reg.ss.spatialCV %>%
   mutate(label = "Risk Predictions",
          Risk_Category = ntile(Prediction, 100),
@@ -835,20 +873,20 @@ theft_risk_sf <-
          Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>%
   cbind(
     aggregate(
-      dplyr::select(theft18) %>% mutate(theftCount = 1), ., sum) %>%
-      mutate(theftCount = replace_na(theftCount, 0))) %>%
-  dplyr::select(label,Risk_Category, theftCount)
+      dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>%
+      mutate(inspectCount = replace_na(inspectCount, 0))) %>%
+  dplyr::select(label,Risk_Category, inspectCount)
 ```
 
 
 
 ```{r}
-rbind(theft_KDE_sf, theft_risk_sf) %>%
+rbind(inspect_KDE_sf, inspect_risk_sf) %>%
   na.omit() %>%
   gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
   ggplot() +
     geom_sf(aes(fill = Risk_Category), colour = NA) +
-    geom_sf(data = sample_n(theft18, 3000), size = .5, colour = "black") +
+    geom_sf(data = sample_n(FoodInspect19, 3000), size = .5, colour = "black") +
     facet_wrap(~label, ) +
     scale_fill_viridis(discrete = TRUE) +
     labs(title="Comparison of Kernel Density and Risk Predictions",
@@ -857,21 +895,21 @@ rbind(theft_KDE_sf, theft_risk_sf) %>%
 ```
 
 Ultimately, we are able to compare our risk predictions versus kernel density of 2018 thefts.  We are especially interested in improvements in the high risk categories.  A well fit model will show the
-highest risk categories capturing points of high density of theft.  In the table below we see that risk predictions are slightly higher than kernel density in the highest risk category of 90 to 100% (the rightmost bar).  This indicates that our model is able to capture the latent risk despite relatively few observed thefts.  This dynamic can also be observed in the medium risk category of 50 to 69%.  
+highest risk categories capturing points of high density of theft.  In the table below we see that risk predictions are slightly higher than kernel density in the highest risk category of 90 to 100% (the rightmost bar).  This indicates that our model is able to capture the latent risk despite relatively few observed thefts.  This dynamic can also be observed in the medium risk category of 50 to 69%.
 
-With increased sophistication in engineered features we would expect our model to improve its ability to capture latent risk, thus increasing its predictive power.  An important consideration for a policymaker is the definite presence of racial bias in the risk factors.  It would not be prudent to "ignore" racial features in building the model with the hope of avoiding this bias, for the issue is baked into the data even if we exclude race variables.  This is due to a number of complicated social factors such as inconsistent reporting and enforcement across neighborhood characteristics.  Implicit bias will always be present and it is the job of the data scientist to discern and minimize its impact on the predictions.  One proposal made my data scientists at Yale is to include racial features in the training of the model but exclude it in predictions (Source:[Yale Insights](https://insights.som.yale.edu/insights/can-bias-be-eliminated-from-algorithms) .  
+With increased sophistication in engineered features we would expect our model to improve its ability to capture latent risk, thus increasing its predictive power.  An important consideration for a policymaker is the definite presence of racial bias in the risk factors.  It would not be prudent to "ignore" racial features in building the model with the hope of avoiding this bias, for the issue is baked into the data even if we exclude race variables.  This is due to a number of complicated social factors such as inconsistent reporting and enforcement across neighborhood characteristics.  Implicit bias will always be present and it is the job of the data scientist to discern and minimize its impact on the predictions.  One proposal made my data scientists at Yale is to include racial features in the training of the model but exclude it in predictions (Source:[Yale Insights](https://insights.som.yale.edu/insights/can-bias-be-eliminated-from-algorithms) .
 
 
 
 ```{r}
-rbind(theft_KDE_sf, theft_risk_sf) %>%
+rbind(inspect_KDE_sf, inspect_risk_sf) %>%
   st_set_geometry(NULL) %>% na.omit() %>%
   gather(Variable, Value, -label, -Risk_Category) %>%
   group_by(label, Risk_Category) %>%
-  summarize(countTheft = sum(Value)) %>%
+  summarize(countInspect = sum(Value)) %>%
   ungroup() %>%
   group_by(label) %>%
-  mutate(Rate_of_test_set_crimes = countTheft / sum(countTheft)) %>%
+  mutate(Rate_of_test_set_crimes = countInspect / sum(countInspect)) %>%
     ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
       geom_bar(aes(fill=label), position="dodge", stat="identity") +
       scale_fill_viridis(discrete = TRUE) +
