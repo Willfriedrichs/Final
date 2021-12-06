@@ -15,7 +15,9 @@ output:
 
 # Introduction
 
-stuff
+This application would allow the City of Chicago to predict food inspection failures the year before inspectors are allocated to restaurants and other food vendors. The City's Health Department would use this application to prepare their plans for the distribution of health inspectors across the city.
+
+With over 19,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Restaurants failing inspection are legally required to receive an additional visit by the Chicago Health Department, so it is especially important for the city to be aware of locations where inspection failures might be common.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
@@ -26,8 +28,6 @@ knitr::opts_chunk$set(echo = TRUE,
 	echo=TRUE)
 
 library(tidyverse)
-library(tidycensus)
-library(dplyr)
 library(sf)
 library(RSocrata)
 library(viridis)
@@ -46,10 +46,11 @@ source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-L
 
 ```
 
-## Read in Data from Chicago
-i 76
-We .
+# Exploratory Analysis
 
+After reading in Chicago Health Inspection data, total inspections for the year 2018 and a map of their density is displayed below. There are tens of thousands of inspections for 2018, with just under 20% of them failed inspections. 
+
+## Preliminary Maps
 
 ```{r , results = FALSE}
 
@@ -72,10 +73,12 @@ neighborhoods <-
   st_read("https://raw.githubusercontent.com/blackmad/neighborhoods/master/chicago.geojson") %>%
   st_transform(st_crs(fishnet))
 
-FoodInspect <-
-  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
-    # filter(results=="Fail") %>%
+Food <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") 
+
+FoodInspect <- Food %>%
+    mutate(year = substr(inspection_date,1,4)) %>% 
+    filter(year == "2018") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
@@ -86,56 +89,13 @@ FoodInspect <-
 ```
 
 
-Census data follows
-
-```{r ACS Data, results = FALSE, message=FALSE,warning=FALSE, cache = FALSE}
-# Create a list of all 2019 acs 5-year variables
-varlist_2018 <- load_variables(2019, "acs5", cache = TRUE)
-
-# Census API key
-census_api_key("94efffd19b56ad527e379faea1653ee74dc3de4a",overwrite = TRUE)
-
-
-# Grab nine specific tract-level variables using the tidycensus "get_acs" command for each tract in Boulder County in 2019
-tracts18 <- get_acs(geography = "tract",            
-                    variables = c("B01001_001","B23025_004","B06011_001",
-                                  "B06012_002","B02001_002","B25002_003",
-                                  "B25013_006","B08013_001","B15012_009"), 
-                    year=2018, 
-                    state=17, 
-                    county=031,
-                    output = "wide",
-                    geometry=TRUE) %>% 
-            st_transform('ESRI:102271') %>%
-            dplyr::select( c("GEOID","B01001_001E","B23025_004E","B06011_001E",
-                      "B06012_002E","B02001_002E","B25002_003E",
-                    "B25013_006E","B08013_001E","B15012_009E","geometry") ) %>%
-            rename(tot_pop = "B01001_001E",
-                   empl_pop = "B23025_004E",
-                   med_inc = "B06011_001E",
-                   pvty_pop = "B06012_002E",
-                   white_pop = "B02001_002E",
-                   vac_occ = "B25002_003E",
-                   own_occ_bach = "B25013_006E",
-                   tt_work = "B08013_001E",
-                   sci_bach = "B15012_009E") %>%
-            mutate(area = as.numeric(st_area(geometry)/1000000))%>%
-            mutate(pop_den = tot_pop/area)
-
-```
-
-
-## Visualizing Theft Data
-
-Stuff
-
 ```{r fig.width=6, fig.height=4}
 # uses grid.arrange to organize indpendent plots
 grid.arrange(ncol=2,
 ggplot() + 
   geom_sf(data = chicagoBoundary) +
   geom_sf(data = FoodInspect, colour="red", size=0.1, show.legend = "point") +
-  labs(title= "Food Inspections, Chicago - 2017") +
+  labs(title= "Food Inspections, Chicago - 2018") +
   mapTheme(title_size = 14),
 
 ggplot() + 
@@ -151,12 +111,43 @@ ggplot() +
 
 ```
 
+All failed inspections for the year 2018 and a map of their density is displayed below. It makes sense that these maps are so similar to the previous maps, as failed inspections are likely to show up where there are more inspections to begin with. Regional patterns do emerge in the comparison between total inspections and failed inspections, however - inspections in the visible clusters to the north and to the west of the loop are more likely to fail.
 
+```{r fig.width=6, fig.height=4}
+FoodInspect <- Food %>%
+    mutate(year = substr(inspection_date,1,4)) %>% 
+    filter(year == "2018") %>%
+    filter(results=="Fail") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    mutate(Legend = "Food_Inspect")
 
-Inspections are then attributed to each fishnet cell.
+grid.arrange(ncol=2,
+ggplot() + 
+  geom_sf(data = chicagoBoundary) +
+  geom_sf(data = FoodInspect, colour="red", size=0.1, show.legend = "point") +
+  labs(title= "Failed Food Inspections, Chicago - 2018") +
+  mapTheme(title_size = 14),
+
+ggplot() + 
+  geom_sf(data = chicagoBoundary, fill = "grey80") +
+  stat_density2d(data = data.frame(st_coordinates(FoodInspect)), 
+                 aes(X, Y, fill = ..level.., alpha = ..level..),
+                 size = 0.01, bins = 40, geom = 'polygon') +
+  scale_fill_viridis() +
+  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
+  labs(title = "Density of Failed Food Inspections") +
+  mapTheme(title_size = 14) + theme(legend.position = "none"))
+```
+
+## Fishnet 
+
+The model will predict the locations of future failed inspections with a fishnet overlayed onto Chicago. Three distinct clusters are immediately visible - the loop, and clusters to the west and north. Note that this map does not show whether an area has a higher rate of restaurant failures. The sum of failures (rather than the rate) is considered because the sum corresponds most directly to the Chicago Health Department needing to expend resources. 
 
 ```{r}
-## add a value of 1 to each crime, sum them with aggregate
+## Add a value of 1 to each crime, sum them with aggregate
 inspect_net <- 
   dplyr::select(FoodInspect) %>% 
   mutate(countInspect = 1) %>% 
@@ -166,22 +157,30 @@ inspect_net <-
          cvID = sample(round(nrow(fishnet) / 24), 
                        size=nrow(fishnet), replace = TRUE))
 
-
+# Plot the fishnet displaying the count of inspection failures
 ggplot() +
   geom_sf(data = inspect_net, aes(fill = countInspect), color = NA) +
   scale_fill_viridis() +
-  labs(title = "Count of Inspections for the Fishnet") +
+  labs(title = "Count of Inspection Failures for the Fishnet") +
   mapTheme()
 
 ```
 
 ## Pulling Risk Factors
 
-Stuff
+The following risk factors are considered to be potential predictors of Failed Food Inspections:
+
+|   1. Rodent Complaints (311 service requests for rodent baiting) 
+|   2. Sanitation (311 service requests due to sanitation code complaints)
+|   3. Ordinance Violation (Department of Buildings)
+|   4. Graffiti (311 service requests for removal)
+|   5. Liquor Retail (liquor store locations)
+|   6. Previous Year Food Inspection Failures
+|   7. Prediction Year Food Inspection All Locations*
+
+_*When making predictions, this will data will come from the year whose potential failures are being predicted. It is assumed that this location-based information will be available since these addresses must be known for inspections to take place in the first placed._
 
 ```{r, results = FALSE}
-
-
 
 ## using Socrata again
 rodentBait <- 
@@ -259,22 +258,28 @@ liquorRetail <-
 foodInspectFail <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
     mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2017") %>%
-    # filter(results=="Fail") %>%
+    filter(results=="Fail") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
     mutate(Legend = "Food_Inspect")
 
-    
-
+foodInspectLocations <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    mutate(Legend = "Food_Inspect")
 
 ```
 
-The multi-map below shows risk factors on a map.
+The multi-map below shows each risk factor mapped individually on fishnets:
 
 ```{r}
-vars_net <- rbind(rodentBait, sanitation311, ordinanceViolation, graffiti, liquorRetail, foodInspectFail)   %>%
+vars_net <- rbind(rodentBait, sanitation311, ordinanceViolation, graffiti, liquorRetail, foodInspectFail, foodInspectLocations)   %>%
   st_join(., fishnet, join=st_within) %>%
   st_drop_geometry() %>%
   group_by(uniqueID, Legend) %>%
@@ -354,6 +359,13 @@ vars_net <- vars_net %>%
                                            st_c(foodInspectFail),
                                            k = 3))
 
+## create NN from food_Inspect_Locations
+vars_net <- vars_net %>%
+    mutate(food_Inspect_Locations.nn = nn_function(st_c(st_coid(vars_net)),
+                                           st_c(foodInspectLocations),
+                                           k = 3))
+
+
 
 vars_net.long.nn <-
   dplyr::select(vars_net, ends_with(".nn")) %>%
@@ -384,18 +396,19 @@ loopPoint <-
 
 ```
 
-The plot below combines risk factors into a single map.
+The plot below combines the 3-NN versions of risk factors into a single map:
 
 ```{r}
-## Visualize the NN feature
+# Visualize the NN feature
 vars_net.long.nn <- 
   dplyr::select(vars_net, ends_with(".nn")) %>%
     gather(Variable, value, -geometry)
 
+# Display plot
 ggplot() +
       geom_sf(data = vars_net.long.nn, aes(fill=value), colour=NA) +
-      scale_fill_viridis(name="NN Distance") +
-      labs(title="Risk Factors NN Distance") +
+      scale_fill_viridis(name="3-NN Distance") +
+      labs(title="Risk Factors 3-NN Distance") +
       mapTheme()
 ```
 
@@ -410,7 +423,7 @@ final_net <-
 
 ### Join in areal data
 
-We use spatial joins to attach *centroids* of fishnets to polygon for neighborhoods and police districts. The map below shows the fishnet as police districts.
+We use spatial joins to attach *centroids* of fishnets to polygon for neighborhoods The map below shows the fishnet as such:
 
 ```{r}
 
@@ -445,10 +458,10 @@ final_net.weights <- nb2listw(final_net.nb, style="W", zero.policy=TRUE)
 
 The grid map below shows the following four elements:
 
-1) Count of thefts in Chicago
-2) Local Morans I's: dispersal or clustering of theft relative to adjacent neighborhoods
+1) Count of failed inspections in Chicago
+2) Local Morans I's: dispersal or clustering of failed inspections relative to adjacent neighborhoods
 3) P-value: statistical significance
-4) Significant Hotspots: areas of significant theft activity in Chicago at 99% significance level
+4) Significant Hotspots: major clusters of failed inspections in Chicago at 99% significance level
 
 ```{r}
 ## see ?localmoran
@@ -518,16 +531,14 @@ final_net <- final_net %>%
 
 ```
 
-### Plot NN distance to hot spot
 
 ```{r}
 ggplot() +
       geom_sf(data = final_net, aes(fill=Inspect.isSig.dist), colour=NA) +
       scale_fill_viridis(name="Inspect.isSig.dist") +
-      labs(title="Distance to Highly Significant Theft Hotspots") +
+      labs(title="NN Distance to Highly Significant \nFailed Inspect Clusters") +
       mapTheme()
 ```
-### Distance to the Loop
 
 We'll likewise consider the distance to the main business area and the center of Chicago--the Loop. See map below.
 
@@ -542,7 +553,10 @@ ggplot() +
 
 ### Correlations
 
-The plots below shows correlations between various features of risk factors and theft in Chicago. The plot highlights that the presence of restaurants with inspection failures and retail liquor locations are potentially significant factors that contribute to theft.
+The plots below show linear correlations between various features of risk factors and failed inspections in Chicago. 
+
+ADDITIONAL ANALYSIS GOES HERE
+
 ```{r, fig.width=10, fig.height=20}
 correlation.long <-
   st_drop_geometry(final_net) %>%
@@ -568,8 +582,8 @@ plotTheme()
 
 ```
 
-### Histogram of Dependent Variable
-The histogram below provides a view of the frequency of the dependent variables.
+### Histogram
+The histogram below provides a view of the frequency of failed inspections by neighbiorhood.
 
 ```{r message=FALSE, warning=FALSE}
 # calculate errors by NEIGHBORHOOD
@@ -598,7 +612,7 @@ HistogramInspect %>%
 
 ## Modeling
 
-The model below uses all six risk factors as nearest neighbor functions, along with spatial features where theft is significant, as independent variables.  Count of theft is taken as the dependent variable. The model cycles through each neighborhood as a hold out, then trains on the remaining cells.  Cross-validation is then used to generate predictions for the hold out.
+The model below uses all seven risk factors as nearest neighbor functions, along with spatial features where failed inspections are significant, as independent variables. Count of failed inspections is taken as the dependent variable. The model cycles through each neighborhood as a hold out, then trains on the remaining cells.  Cross-validation is then used to generate predictions for the hold out.
 
 We generate four variations of the model: risk factors with and without spatial features, k-fold and spatial cross-validation.
 
@@ -626,7 +640,6 @@ crossValidate <- function(dataset, id, dependentVariable, indVariables) {
     glm(paste0(dependentVariable,"~."), family = "poisson",
      data = fold.train %>%
       dplyr::select(-geometry, -id))
- 
   thisPrediction <-
    mutate(fold.test, Prediction = predict(regression, fold.test, type = "response"))
  
@@ -642,11 +655,11 @@ crossValidate <- function(dataset, id, dependentVariable, indVariables) {
 # View(crossValidate)
 
 ## define independent variables
-reg.ss.vars <- c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "Inspect.isSig", "Inspect.isSig.dist", "loopDistance")
+reg.ss.vars <- c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "food_Inspect_Locations.nn", "Inspect.isSig", "Inspect.isSig.dist", "loopDistance")
 
 ## define independent variables with spatial features
 reg.vars <-
-c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn")
+c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "food_Inspect_Locations.nn")
 
 ## RUN REGRESSIONS
 reg.ss.spatialCV <- crossValidate(
@@ -684,7 +697,10 @@ reg.spatialCV <- crossValidate(
 
 ### Cross-validation
 
-Model errors are plotted in a histogram below.  The mode of mean absolute errors is 2 thefts.  The model can benefit from further refinement based on the presence of neighborhoods with significant errors.  Most grievous errors occur in neighborhoods near the Loop and the touristy Millennium Park, presumably areas with high prevelance of theft under $500.
+Model errors are plotted in a histogram below.  The mode of mean absolute errors is 2 thefts.  The model can benefit from further refinement based on the presence of neighborhoods with significant errors. 
+
+Most grievous errors occur in neighborhoods near the Loop and the... 
+
 
 Comparing mean errors between models shows that spatial features improve our models significantly, compared to using just the risk factors.  The comparison map confirms this finding.
 
@@ -808,7 +824,7 @@ ggplot(data=inspect_KD.df, aes(x=x, y=y)) +
 ```
 
 
-Kernel density can be viewed on the fishnet with 1500 random theft observations.
+Kernel density can be viewed on the fishnet with 1500 instances of failed inspections.
 
 ```{r}
 
@@ -819,13 +835,13 @@ as.data.frame(inspect_KD.1000) %>%
      geom_sf(aes(fill=value)) +
      geom_sf(data = sample_n(FoodInspect, 1500), size = .5) +
      scale_fill_viridis(name = "Density") +
-     labs(title = "Kernel density of 2017 thefts") +
+     labs(title = "Kernel density of 2018 failed inspections") +
      mapTheme(title_size = 14)
 ```
 
-## Get 2018 crime data
+## Get 2018 failed inspection data
 
-To evaluate the generalizability of our model we'll apply our predictions and compare the results to 2018 theft statistics.
+To evaluate the generalizability of our model we'll apply our predictions and compare the results to 2018 failed inspection statistics.
 
 ```{r, results = FALSE}
 FoodInspect19 <-
@@ -841,7 +857,9 @@ FoodInspect19 <-
 
 ### Generalizability across Race Contexts
 
-ACS data allows us to evaluate generalizability by race contexts. The chunk below compares errors for majority white versus majority non-white neighborhoods.  Table below shows that we are generally under-predicting in non-white neighborhoods and over-predicting in majority white neighborhoods. Additionally, the model with spatial process generates smaller errors across neighborhood contexts.
+ACS data allows us to evaluate generalizability by race contexts.
+
+...Do we even want to include this?
 
 ```{r, include=FALSE}
 
@@ -878,83 +896,85 @@ kable_styling("striped", full_width = F)
 
 ```
 
+One idea would be to run the model with for 2019, with the variables of 2018 except having 2019's inspection location data (since presumably there is information as to where restaraunts are that need inspecting).
+
+This means running the glm() function outside of the cross validation method, but I think it might be worth it. Apologies for not getting to that over the weekend!
+
+
+<!-- ```{r} -->
+<!-- inspect_KDE_sf <- as.data.frame(inspect_KD.1000) %>% -->
+<!--   st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>% -->
+<!--   aggregate(., final_net, mean) %>% -->
+<!--   mutate(label = "Kernel Density", -->
+<!--          Risk_Category = ntile(value, 100), -->
+<!--          Risk_Category = case_when( -->
+<!--            Risk_Category >= 90 ~ "90% to 100%", -->
+<!--            Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%", -->
+<!--            Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%", -->
+<!--            Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%", -->
+<!--            Risk_Category >= 1 & Risk_Category  <= 29 ~ "1% to 29%")) %>% -->
+<!--   cbind( -->
+<!--     aggregate( -->
+<!--       dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>% -->
+<!--     mutate(inspectCount = replace_na(inspectCount, 0))) %>% -->
+<!--   dplyr::select(label, Risk_Category, inspectCount) -->
+<!-- ``` -->
 
 
 
-```{r}
-inspect_KDE_sf <- as.data.frame(inspect_KD.1000) %>%
-  st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
-  aggregate(., final_net, mean) %>%
-  mutate(label = "Kernel Density",
-         Risk_Category = ntile(value, 100),
-         Risk_Category = case_when(
-           Risk_Category >= 90 ~ "90% to 100%",
-           Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%",
-           Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%",
-           Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%",
-           Risk_Category >= 1 & Risk_Category  <= 29 ~ "1% to 29%")) %>%
-  cbind(
-    aggregate(
-      dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>%
-    mutate(inspectCount = replace_na(inspectCount, 0))) %>%
-  dplyr::select(label, Risk_Category, inspectCount)
-```
+<!-- ```{r} -->
+<!-- inspect_risk_sf <- -->
+<!--   reg.ss.spatialCV %>% -->
+<!--   mutate(label = "Risk Predictions", -->
+<!--          Risk_Category = ntile(Prediction, 100), -->
+<!--          Risk_Category = case_when( -->
+<!--          Risk_Category >= 90 ~ "90% to 100%", -->
+<!--          Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%", -->
+<!--          Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%", -->
+<!--          Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%", -->
+<!--          Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>% -->
+<!--   cbind( -->
+<!--     aggregate( -->
+<!--       dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>% -->
+<!--       mutate(inspectCount = replace_na(inspectCount, 0))) %>% -->
+<!--   dplyr::select(label,Risk_Category, inspectCount) -->
+<!-- ``` -->
 
 
 
-```{r}
-inspect_risk_sf <-
-  reg.ss.spatialCV %>%
-  mutate(label = "Risk Predictions",
-         Risk_Category = ntile(Prediction, 100),
-         Risk_Category = case_when(
-         Risk_Category >= 90 ~ "90% to 100%",
-         Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%",
-         Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%",
-         Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%",
-         Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>%
-  cbind(
-    aggregate(
-      dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>%
-      mutate(inspectCount = replace_na(inspectCount, 0))) %>%
-  dplyr::select(label,Risk_Category, inspectCount)
-```
+<!-- ```{r} -->
+<!-- rbind(inspect_KDE_sf, inspect_risk_sf) %>% -->
+<!--   na.omit() %>% -->
+<!--   gather(Variable, Value, -label, -Risk_Category, -geometry) %>% -->
+<!--   ggplot() + -->
+<!--     geom_sf(aes(fill = Risk_Category), colour = NA) + -->
+<!--     geom_sf(data = sample_n(FoodInspect19, 3000), size = .5, colour = "black") + -->
+<!--     facet_wrap(~label, ) + -->
+<!--     scale_fill_viridis(discrete = TRUE) + -->
+<!--     labs(title="Comparison of Kernel Density and Risk Predictions", -->
+<!--          subtitle="2017 theft risk predictions; 2018 theft") + -->
+<!--     mapTheme(title_size = 14) -->
+<!-- ``` -->
+
+<!-- Ultimately, we are able to compare our risk predictions versus kernel density of 2018 thefts.  We are especially interested in improvements in the high risk categories.  A well fit model will show the -->
+<!-- highest risk categories capturing points of high density of theft.  In the table below we see that risk predictions are slightly higher than kernel density in the highest risk category of 90 to 100% (the rightmost bar).  This indicates that our model is able to capture the latent risk despite relatively few observed thefts.  This dynamic can also be observed in the medium risk category of 50 to 69%. -->
+
+<!-- With increased sophistication in engineered features we would expect our model to improve its ability to capture latent risk, thus increasing its predictive power.  An important consideration for a policymaker is the definite presence of racial bias in the risk factors.  It would not be prudent to "ignore" racial features in building the model with the hope of avoiding this bias, for the issue is baked into the data even if we exclude race variables.  This is due to a number of complicated social factors such as inconsistent reporting and enforcement across neighborhood characteristics.  Implicit bias will always be present and it is the job of the data scientist to discern and minimize its impact on the predictions.  One proposal made my data scientists at Yale is to include racial features in the training of the model but exclude it in predictions (Source:[Yale Insights](https://insights.som.yale.edu/insights/can-bias-be-eliminated-from-algorithms) . -->
 
 
 
-```{r}
-rbind(inspect_KDE_sf, inspect_risk_sf) %>%
-  na.omit() %>%
-  gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
-  ggplot() +
-    geom_sf(aes(fill = Risk_Category), colour = NA) +
-    geom_sf(data = sample_n(FoodInspect19, 3000), size = .5, colour = "black") +
-    facet_wrap(~label, ) +
-    scale_fill_viridis(discrete = TRUE) +
-    labs(title="Comparison of Kernel Density and Risk Predictions",
-         subtitle="2017 theft risk predictions; 2018 theft") +
-    mapTheme(title_size = 14)
-```
-
-Ultimately, we are able to compare our risk predictions versus kernel density of 2018 thefts.  We are especially interested in improvements in the high risk categories.  A well fit model will show the
-highest risk categories capturing points of high density of theft.  In the table below we see that risk predictions are slightly higher than kernel density in the highest risk category of 90 to 100% (the rightmost bar).  This indicates that our model is able to capture the latent risk despite relatively few observed thefts.  This dynamic can also be observed in the medium risk category of 50 to 69%.
-
-With increased sophistication in engineered features we would expect our model to improve its ability to capture latent risk, thus increasing its predictive power.  An important consideration for a policymaker is the definite presence of racial bias in the risk factors.  It would not be prudent to "ignore" racial features in building the model with the hope of avoiding this bias, for the issue is baked into the data even if we exclude race variables.  This is due to a number of complicated social factors such as inconsistent reporting and enforcement across neighborhood characteristics.  Implicit bias will always be present and it is the job of the data scientist to discern and minimize its impact on the predictions.  One proposal made my data scientists at Yale is to include racial features in the training of the model but exclude it in predictions (Source:[Yale Insights](https://insights.som.yale.edu/insights/can-bias-be-eliminated-from-algorithms) .
-
-
-
-```{r}
-rbind(inspect_KDE_sf, inspect_risk_sf) %>%
-  st_set_geometry(NULL) %>% na.omit() %>%
-  gather(Variable, Value, -label, -Risk_Category) %>%
-  group_by(label, Risk_Category) %>%
-  summarize(countInspect = sum(Value)) %>%
-  ungroup() %>%
-  group_by(label) %>%
-  mutate(Rate_of_test_set_crimes = countInspect / sum(countInspect)) %>%
-    ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
-      geom_bar(aes(fill=label), position="dodge", stat="identity") +
-      scale_fill_viridis(discrete = TRUE) +
-      labs(title = "Risk prediction vs. Kernel density, 2018 thefts") +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
-```
+<!-- ```{r} -->
+<!-- rbind(inspect_KDE_sf, inspect_risk_sf) %>% -->
+<!--   st_set_geometry(NULL) %>% na.omit() %>% -->
+<!--   gather(Variable, Value, -label, -Risk_Category) %>% -->
+<!--   group_by(label, Risk_Category) %>% -->
+<!--   summarize(countInspect = sum(Value)) %>% -->
+<!--   ungroup() %>% -->
+<!--   group_by(label) %>% -->
+<!--   mutate(Rate_of_test_set_crimes = countInspect / sum(countInspect)) %>% -->
+<!--     ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) + -->
+<!--       geom_bar(aes(fill=label), position="dodge", stat="identity") + -->
+<!--       scale_fill_viridis(discrete = TRUE) + -->
+<!--       labs(title = "Risk prediction vs. Kernel density, 2018 thefts") + -->
+<!--       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) -->
+<!-- ``` -->
