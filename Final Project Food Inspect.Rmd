@@ -1,6 +1,6 @@
 ---
 title: 'Final Project: Food Inspection Failures in Chicago'
-author: "Sabir Nazarov"
+author: "Sabir Nazarov, William Friedrichs"
 date: "12/1/2021"
 output: 
   html_document: 
