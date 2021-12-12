@@ -220,7 +220,7 @@ graffiti <-
   "-Requests/311-Service-Requests-Graffiti-Removal-Historical/",
   "hec5-y4x5")) %>%
   mutate(year = substr(creation_date,1,4)) %>%
-  filter(year == "2017") %>%
+  filter(year == "2018") %>%
   filter(where_is_the_graffiti_located_ %in%
   c("Front","Rear","Side")) %>%
   dplyr::select(Y = latitude, X = longitude) %>%
@@ -257,7 +257,7 @@ liquorRetail <-
 
 foodInspectFail <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2017") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
     filter(results=="Fail") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
@@ -265,14 +265,16 @@ foodInspectFail <-
     st_transform(st_crs(fishnet)) %>%
     mutate(Legend = "Food_Inspect")
 
+# Food establishment locations for 2019
 foodInspectLocations <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2019") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Food_Inspect")
+    mutate(Legend = "Food_Inspect") %>%
+    distinct()
 
 ```
 
