@@ -1,6 +1,6 @@
 ---
 title: 'Final Project: Food Inspection Failures in Chicago'
-author: "Sabir Nazarov"
+author: "Sabir Nazarov, William Friedrichs"
 date: "12/1/2021"
 output: 
   html_document: 
@@ -90,7 +90,7 @@ FoodInspect <- Food %>%
 
 
 ```{r fig.width=6, fig.height=4}
-# uses grid.arrange to organize indpendent plots
+# uses grid.arrange to organize independent plots
 grid.arrange(ncol=2,
 ggplot() + 
   geom_sf(data = chicagoBoundary) +
@@ -212,7 +212,7 @@ ordinanceViolation <-
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Ordinance _Violations")
+    mutate(Legend = "Ordinance_Violations")
 
 
 graffiti <-
@@ -220,7 +220,7 @@ graffiti <-
   "-Requests/311-Service-Requests-Graffiti-Removal-Historical/",
   "hec5-y4x5")) %>%
   mutate(year = substr(creation_date,1,4)) %>%
-  filter(year == "2017") %>%
+  filter(year == "2018") %>%
   filter(where_is_the_graffiti_located_ %in%
   c("Front","Rear","Side")) %>%
   dplyr::select(Y = latitude, X = longitude) %>%
@@ -257,22 +257,24 @@ liquorRetail <-
 
 foodInspectFail <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2017") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
     filter(results=="Fail") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Food_Inspect")
+    mutate(Legend = "Food_Inspect_Fail")
 
+# Food establishment locations for 2019
 foodInspectLocations <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2019") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Food_Inspect")
+    mutate(Legend = "Food_Inspect_Locations") %>%
+    distinct()
 
 ```
 
@@ -405,11 +407,11 @@ vars_net.long.nn <-
     gather(Variable, value, -geometry)
 
 # Display plot
-ggplot() +
-      geom_sf(data = vars_net.long.nn, aes(fill=value), colour=NA) +
-      scale_fill_viridis(name="3-NN Distance") +
-      labs(title="Risk Factors 3-NN Distance") +
-      mapTheme()
+# ggplot() +
+#       geom_sf(data = vars_net.long.nn, aes(fill=value), colour=NA) +
+#       scale_fill_viridis(name="3-NN Distance") +
+#       labs(title="Risk Factors 3-NN Distance") +
+#       mapTheme()
 ```
 
 Since the counts were aggregated to each cell by `uniqueID` we can use that to join the counts to the fishnet.
@@ -560,9 +562,12 @@ ADDITIONAL ANALYSIS GOES HERE
 ```{r, fig.width=10, fig.height=20}
 correlation.long <-
   st_drop_geometry(final_net) %>%
-  dplyr::select(-uniqueID, -cvID, -name, -loopDistance, -Inspect.isSig, -Inspect.isSig.dist) %>%
+  dplyr::select(-uniqueID, -cvID, -name,-Sanitation_311, -Ordinance_Violations, -Graffiti, -Liquor_Retail, -Rodent_Bait, -Food_Inspect_Fail,  -Inspect.isSig.dist ) %>%
   gather(Variable, Value, -countInspect)
 
+# colnames(final_net)
+
+# , foodInspectLocations, -Inspect.isSig,
 
 correlation.cor <-
   correlation.long %>%
@@ -586,10 +591,12 @@ plotTheme()
 The histogram below provides a view of the frequency of failed inspections by neighbiorhood.
 
 ```{r message=FALSE, warning=FALSE}
+# cvID
+
 # calculate errors by NEIGHBORHOOD
 HistogramInspect <-
   final_net %>%
-    group_by(cvID) %>%
+    group_by(uniqueID) %>%
     summarize(countInspect_sum = sum(countInspect, na.rm = T),
               countInspect_mean = mean(countInspect, na.rm = T)) %>%
   ungroup()
@@ -603,7 +610,7 @@ HistogramInspect <-
 HistogramInspect %>%
   ggplot(aes(countInspect_sum)) +
     geom_histogram(bins = 30, colour="black", fill = "#FDE725FF") +
-    scale_x_continuous(breaks = seq(30, 475, by = 25)) +
+    scale_x_continuous(breaks = seq(0, 100, by = 5)) +
     labs(title="Distribution of Failed Inspection Counts", subtitle = "Chicago, IL",
          x="Theft Count", y="Count")
 
