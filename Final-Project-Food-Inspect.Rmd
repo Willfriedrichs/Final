@@ -14,10 +14,13 @@ output:
 
 
 # Introduction
+On July 1st, 2016, Chicago Department of Public Health (CDPH) identified an E. coli outbreak linked to a restaurant in Bridgeport neighborhood of Chicago.  Within days, the number of cases swelled from initially report 25 cases to 65.  The outbreak resulted in stunning 20 hospitalizations.  By the time, the dust settled, over 100 people, including 40 food handlers from the restaurant, suffered illness.  The outbreak, one of the worst in the cities recent history, exposed the critical work conducted by the city's restaurant safety inspectors.  Their report of the July 1st inspection identified <strong>critical failure</strong> in revealing "improper temperatures for several food items".  The actions mitigated the effect of an outbreak which could have been much worse, had it not been identified promptly. 
 
-This application would allow the City of Chicago to predict food inspection failures the year before inspectors are allocated to restaurants and other food vendors. The City's Health Department would use this application to prepare their plans for the distribution of health inspectors across the city.
+The city of Chicago employs approximately 3 dozen restaurant food inspectors.  With over 15,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Our application, presented here, allows for greater precision in anticipating possible inspection failures using machine-learning algorithms.  In adopting our application, the city of Chicago shortens the feedback loop in identification of critical failures, thus preventing future outbreak.  In addition to improving public health outcomes, our application improves the allocation of the limited number of inspectors yielding greater efficiency.  The built-in scheduling algorithm prioritizes inspections in the high risk areas with  mechanisms for revising inspector schedules based on latest available data.  We know that certain risk-factors can significantly increase chance of a failure--we incorporate these risks real-time.
 
-With over 19,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Restaurants failing inspection are legally required to receive an additional visit by the Chicago Health Department, so it is especially important for the city to be aware of locations where inspection failures might be common.
+<!-- Restaurants failing inspection are legally required to receive an additional visit by the Chicago Health Department, so it is especially important for the city to be aware of locations where inspection failures might be common.  Our application would allow the City of Chicago to predict food inspection failures the year before inspectors are allocated to restaurants and other food vendors. The City's Health Department would use this application to prepare their plans for the distribution of health inspectors across the city. -->
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
