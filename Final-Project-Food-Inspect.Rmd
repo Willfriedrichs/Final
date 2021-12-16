@@ -16,6 +16,8 @@ output:
 # Introduction
 On July 1st, 2016, Chicago Department of Public Health (CDPH) identified an E. coli outbreak linked to a restaurant in Bridgeport neighborhood of Chicago.  Within days, the number of cases swelled from initially report 25 cases to 65.  The outbreak resulted in stunning 20 hospitalizations.  By the time, the dust settled, over 100 people, including 40 food handlers from the restaurant, suffered illness.  The outbreak, one of the worst in the cities recent history, exposed the critical work conducted by the city's restaurant safety inspectors.  Their report of the July 1st inspection identified <strong>critical failure</strong> in revealing "improper temperatures for several food items".  The actions mitigated the effect of an outbreak which could have been much worse, had it not been identified promptly. 
 
+This application presents a helpful tool to spatially predict inspections needed, created by forecasting the number of restaurant inspection failures (and thus, the number of additional inspections required) in Chicago for a given year. 
+
 The city of Chicago employs approximately 3 dozen restaurant food inspectors.  With over 15,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Our application, presented here, allows for greater precision in anticipating possible inspection failures using machine-learning algorithms.  In adopting our application, the city of Chicago shortens the feedback loop in identification of critical failures, thus preventing future outbreak.  In addition to improving public health outcomes, our application improves the allocation of the limited number of inspectors yielding greater efficiency.  The built-in scheduling algorithm prioritizes inspections in the high risk areas with  mechanisms for revising inspector schedules based on latest available data.  We know that certain risk-factors can significantly increase chance of a failure--we incorporate these risks real-time.
 
 <!-- Restaurants failing inspection are legally required to receive an additional visit by the Chicago Health Department, so it is especially important for the city to be aware of locations where inspection failures might be common.  Our application would allow the City of Chicago to predict food inspection failures the year before inspectors are allocated to restaurants and other food vendors. The City's Health Department would use this application to prepare their plans for the distribution of health inspectors across the city. -->
@@ -112,9 +114,9 @@ ggplot() +
 
 ```
 
-  Several clusters immediately stand out. The darkest cluster, to the East, is the Loop. There are also higher numbers of failed inspections along the North Shore, and to the East in Lawndale. The spatial clustering of failed inspections is a good sign that spatial analysis is appropriate in predicting failed inspections. 
+  Several clusters immediately stand out. The darkest cluster, to the east, is the Loop. There are also higher numbers of failed inspections along the North Shore, and to the west in Lawndale. The spatial clustering of failed inspections is a good sign that spatial analysis is appropriate in predicting failed inspections. 
   
-  The most important spatial factor in predicting inspection failures is restaurant locations. There cannot be a failure without a restaurant being inspected in the first place, after all. When examining all restaurant locations, this time, we will map density as a layer rather than plotting each establishment individually. This avoids situations where data for restaurants in close proximity could be obscured due to overlapping, which would be more of a problem given the size of the all-restaurants dataset. Displayed below are side-by-side density maps of all restaurants logged for inspection in 2018 and restaurant inspection failures for that year.
+  One of the most important spatial factors in predicting inspection failures is restaurant locations. There cannot be a failure without a restaurant to be inspected in the first place, after all. When examining all restaurant inspection locations, this time, we will map density as a layer rather than plotting each establishment individually. This avoids situations where data for restaurants in close proximity could be obscured due to overlapping, which would be more of a problem given the size of the all-restaurants dataset. Displayed below are side-by-side density maps of all restaurants logged for inspection in 2018 and restaurant inspection failures for that year.
 
 ```{r fig.width=6, fig.height=4}
 grid.arrange(ncol=2,
@@ -126,7 +128,7 @@ ggplot() +
                  size = 0.01, bins = 40, geom = 'polygon') +
   scale_fill_viridis() +
   scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title = "Density of Food Inspections") +
+  labs(title = "Food Inspections Density") +
   mapTheme(title_size = 14) + theme(legend.position = "none"),
 
 ggplot() + 
@@ -136,21 +138,21 @@ ggplot() +
                  size = 0.01, bins = 40, geom = 'polygon') +
   scale_fill_viridis() +
   scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title = "Density of Failed Food Inspections") +
+  labs(title = "Failed Food Inspection Density") +
   mapTheme(title_size = 14) + theme(legend.position = "none")
 )
 ```
 
-  Brighter green represents higher density on the maps above. The maps are very similar, which is a testament to the importance of restaurant locations as a predicting factor. Just by the visual comparison between the graphs, however, there seem to be some areas with higher concentrations of failures in comparison to total inspection numbers (specifically along the North Shore, and in in Lawndale).
+  Brighter green represents higher density on the maps above. The maps are very similar, which is a testament to the importance of restaurant locations as a predicting factor. Just by the visual comparison between the graphs, however, there seem to be some areas with higher concentrations of failures in comparison to total inspection numbers (specifically along the North Shore, and in in Lawndale). These patterns support the use of this application, because the differences in the maps show that assigning inspectors purely based on restaurant density would not be the optimal way for the Chicago Health Department to assign its resources. Some areas are more likely have inspection-failing restaurants than others despite similar counts of restaurants. Because failures add an additional inspection, this report's predictive tool looks to determine where failures are likely to occur.
   
-  Since the predictive tool outlined by this report aims to take data from one year and predict failed food inspections for the following year, it is useful to compare the locations of two annual sets of food inspections side-by-side. The maps below illustrate locations of failed inspections in 2017 and 2018.
+  This tool aims to take data from one year and predict failed food inspections for the following year, so it is useful to compare the locations of two annual sets of food inspections side-by-side. The maps below illustrate locations of failed inspections in 2017 and 2018.
 
-```{r}
+```{r fig.width=6, fig.height=4}
 ## Get 2017 data
 FoodInspect17 <-
   read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
     mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2017") %>%
-    # filter(results=="Fail") %>%
+    filter(results=="Fail") %>%
     dplyr::select(Y = latitude, X = longitude) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
@@ -161,22 +163,27 @@ grid.arrange(ncol=2,
              ggplot() + 
   geom_sf(data = chicagoBoundary) +
   geom_sf(data = FoodInspect17, colour="red", size=0.1, show.legend = "point") +
-  labs(title= "Failed Food Inspections, Chicago - 2017") +
+  labs(title= "2017 Failed Food Inspections") +
   mapTheme(title_size = 14),
   
   ggplot() + 
   geom_sf(data = chicagoBoundary) +
   geom_sf(data = FoodInspect, colour="red", size=0.1, show.legend = "point") +
-  labs(title= "Failed Food Inspections, Chicago - 2018") +
+  labs(title= "2018 Failed Food Inspections") +
   mapTheme(title_size = 14)
 )
 ```
 
+Failed inspections for 2017 and 2018 look very similar. This supports the notion that one year's failed inspections can be used to predict those of the next year. Some of the differences can be attributed to the fact that a slightly different set of restaurants are inspected each year. For example, food inspections in 2019 covered 387 additional restaurants compared to 2018. 
 
-# Fishnet
+# Our Spatial Process: the Fishnet
+
+An ideal spatial process for our model must take into account factors that are relevant at a local level, and that factors affecting one restaurant are very likely to affect those nearby. Additionally, rather than predicting outcomes of individual scheduled inspections on a restaurant by restaurant basis, a spatial process should be used that is compatible with the fact that new establishments are added to the database on a yearly basis.
+
+Predicting on a <strong>fishnet grid</strong> such that Chicago is divided into equally sized square cells accomplishes this. This model uses the previous year's inspections and other risk factors to generate a prediction of the number of failed inspections in each cell. The map below displays the actual count of 2018 restaurant failures per cell on the grid. For the purposes of this model, each cell will be 500 square meters, area equivalent to about 2.5 Chicago city blocks. 
 
 ```{r}
-## Add a value of 1 to each crime, sum them with aggregate
+## Add a value of 1 for each failure, sum them with aggregate
 inspect_net <- 
   dplyr::select(FoodInspect) %>% 
   mutate(countInspect = 1) %>% 
@@ -193,25 +200,71 @@ ggplot() +
   labs(title = "Count of Inspection Failures for the Fishnet") +
   mapTheme()
 
+# Create a histogram for exploration of expected prediction distribution
+HistogramInspect <-
+  inspect_net %>%
+    group_by(uniqueID) %>%
+    summarize(countInspect_sum = sum(countInspect, na.rm = T),
+              countInspect_mean = mean(countInspect, na.rm = T)) %>%
+  ungroup()
+
+# plot histogram of failures
+HistogramInspect %>%
+  ggplot(aes(countInspect_sum)) +
+    geom_histogram(bins = 30, colour="black", fill = "#FDE725FF") +
+    scale_x_continuous(breaks = seq(0, 100, by = 5)) +
+    labs(title="Distribution of Failed Inspection Counts", subtitle = "Chicago, IL",
+         x="Number of Failed Inspection Counts", y="Number of Cells")
 ```
 
-## Pulling Risk Factors
+The histogram above illustrates the distribution of cells according to their actual number of failed restaurants for 2018. Of the 2500 cells that comprise Chicago's area, just over half recorded no failed inspections. The vast majority of cells that did have failed inspections had less than 10, though a few individual cells had 30 or more. When our 2018 model is used to predict failures by fishnet cell for 2019, predictions will have a similar distribution. Our spatial process should produce a similar result, as its estimates will reflect the clustered nature of restaurant failures in Chicago when it makes its predictions.
 
-The following risk factors are considered to be potential predictors of Failed Food Inspections:
+# Modeling Approach and Risk Factors
 
-|   1. Rodent Complaints (311 service requests for rodent baiting) 
-|   2. Sanitation (311 service requests due to sanitation code complaints)
-|   3. Ordinance Violation (Department of Buildings)
-|   4. Graffiti (311 service requests for removal)
-|   5. Liquor Retail (liquor store locations)
-|   6. Previous Year Food Inspection Failures
-|   7. Prediction Year Food Inspection All Locations*
+As stated in the introduction, the goal of the model itself is to spatially predict failed inspections such that an estimate of the total number of inspections can be used to more efficiently allocate inspectors throughout Chicago. To predict inspection failures for a target year, our model uses a generalized linear model. Specifically, our model creates a function which, for each cell in the fishnet, takes a set of dependent variables and returns a predicted number of restaurant inspection failures. The actual predictions for each cell that are used as forecasts of failed inspections for each cell are outputs of k-fold validation. This will be explored in more detail in the next section, but the basic idea is that the predictions created by k-fold cross validation of one year’s data are used as predictions for the ensuing year. 
 
-_*When making predictions, this will data will come from the year whose potential failures are being predicted. It is assumed that this location-based information will be available since these addresses must be known for inspections to take place in the first placed._
+This process, however, is only possible with a set of independent variables whose spatial variation collectively do well to predict restaurant inspection failures. Each independent variable or "risk factor" is explored in more detail in the subsections below.
+
+#### Inspection Locations and Three Nearest Neighbors of Inspection Failure Locations
+
+_Inspection Locations_ - As described in the previous section, inspection locations are vital predictors of the next year's failure locations. In order for a restaurant to fail an inspection, the inspection must take place at a location, and chances are that location is contained within the set of the previous year's inspection locations. Like the rest of the risk factors, inspection locations are used in their fishnet form. 
 
 ```{r, results = FALSE}
+# Food establishment locations, 2018
+foodInspectLocations <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    distinct() %>%
+    mutate(Legend = "Food_Inspect_Locations") 
+```
 
-## using Socrata again
+_Inspection Failure Locations (3NN)_ - Inspection failure locations cannot be added as a risk factor outright, as k-folds validation in the next section seeks to optimize this exact variable. If inspection failure locations were included as is, k-folds validation would heavily overfit its predictions based on this variable, giving minimal consideration to other variables. The model would be more "accurate" in replicating the locations of inspection failures, but less generalizeable to the following year and less useful as a predictive tool. Instead, an independent variable is introduced reflecting the mean distance to the three nearest inspection failure points for any point in Chicago. Averaged by fishnet cell, this results in a factor that can help predict inspection failure locations without causing the cross validation to overfit. 
+
+```{r, results = FALSE}
+# Food inspection failures, 2018
+# 3NN to be performed on this risk factor later
+foodInspectFail <-
+  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
+    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
+    filter(results=="Fail") %>%
+    dplyr::select(Y = latitude, X = longitude) %>%
+    na.omit() %>%
+    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+    st_transform(st_crs(fishnet)) %>%
+    mutate(Legend = "Food_Inspect_Fail")
+```
+
+#### Six Risk Factors from the Chicago Open Data Portal
+
+The following risk factors are considered to be potential predictors of Failed Food Inspections, and are accessed from the Chicago Open Data Portal:
+
+_Rodent Complaints (3NN)_ - This variable records location-based 311 service requests for rodent baiting over a year. There were 39,023 instances in 2018.
+
+```{r, results = FALSE}
 rodentBait <- 
   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Rodent-Baiting-Historic   al/97t6-zrhs") %>%
     mutate(year = substr(creation_date,1,4)) %>% filter(year == "2018") %>%
@@ -220,7 +273,11 @@ rodentBait <-
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
     mutate(Legend = "Rodent_Bait")
+```
 
+_Sanitation (3NN)_ - This variable records location-based 311 service associated with sanitation code complaints. There were 3,316 instances in 2018. 
+
+```{r, results = FALSE}
 sanitation311 <-
   read.socrata(paste0("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Sanitation-Code-Complaints-Hi/me59-5fac")) %>%
   mutate(year = substr(creation_date,1,4)) %>%
@@ -232,8 +289,11 @@ sanitation311 <-
   st_as_sf(coords = c("X","Y"), crs=4326, agr="constant") %>%
   st_transform(st_crs(fishnet)) %>%
   mutate(Legend = "Sanitation_311")
+```
 
+_Ordinance Violation (3NN)_ - This variable refers to reported Department of Buildings ordinance violations in Chicago. In 2018, there were reports of 43,243 of these.
 
+```{r, results = FALSE}
 ordinanceViolation <- 
   read.socrata("https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv") %>%
     mutate(year = substr(VIOLATION.DATE,1,4)) %>% filter(year == "2018") %>%
@@ -242,8 +302,11 @@ ordinanceViolation <-
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
     mutate(Legend = "Ordinance_Violations")
+```
 
+_Graffiti (3NN)_ - This records all 311 service requests for the removal of graffiti in Chicago. There were 55,873 of these requests in Chicago in 2018.
 
+```{r, results = FALSE}
 graffiti <-
   read.socrata(paste0("https://data.cityofchicago.org/Service",
   "-Requests/311-Service-Requests-Graffiti-Removal-Historical/",
@@ -257,21 +320,11 @@ graffiti <-
   st_as_sf(coords = c("X","Y"), crs=4326, agr="constant") %>%
   st_transform(st_crs(fishnet)) %>%
   mutate(Legend = "Graffiti")
+```
 
+_Liquor Retail (3NN)_ - This variable derives the locations of liquor stores from the Chicago Open Data Portal Database business license data.
 
-# streetLightsOut <-
-#   read.socrata(paste0("https://data.cityofchicago.org/Service",
-#   "-Requests/311-Service-Requests-Street-Lights-All-Out/",
-#   "zuxi-7xem")) %>%
-#   mutate(year = substr(creation_date,1,4)) %>%
-#   filter(year == "2017") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X","Y"), crs=4326, agr="constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Street_Lights_Out")
-
-
+```{r, results = FALSE}
 liquorRetail <-
   read.socrata(paste0("https://data.cityofchicago.org/resource/",
   "nrmj-3kcf.json")) %>%
@@ -282,34 +335,12 @@ liquorRetail <-
   st_as_sf(coords = c("X","Y"), crs=4326, agr="constant") %>%
   st_transform(st_crs(fishnet)) %>%
   mutate(Legend = "Liquor_Retail")
-
-
-foodInspectFail <-
-  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2018") %>%
-    filter(results=="Fail") %>%
-    dplyr::select(Y = latitude, X = longitude) %>%
-    na.omit() %>%
-    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-    st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Food_Inspect_Fail")
-
-# Food establishment locations for 2019
-foodInspectLocations <-
-  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2019") %>%
-    dplyr::select(Y = latitude, X = longitude) %>%
-    na.omit() %>%
-    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-    st_transform(st_crs(fishnet)) %>%
-    distinct() %>%
-    mutate(Legend = "Food_Inspect_Locations") 
-
 ```
 
-The multi-map below shows each risk factor mapped individually on fishnets:
+All five of these risk factors use Three Nearest Neighbor analysis. While it would not break the model's generalizability to use these data in their raw form, Three Nearest Neighbor versions of these risk factors tended to perform slightly better in the model. The plot below combines the five new risk factors into a single map below. Note that the lighter colors correspond to cells farther from these factors, meaning that in this case, cells with darker colors have a higher likelihood of failed inspections being predicted in them.  
 
 ```{r}
+# Create a binded set of nets with the variables of interest collected thus far
 vars_net <- rbind(rodentBait, sanitation311, ordinanceViolation, graffiti, liquorRetail, foodInspectFail, foodInspectLocations)   %>%
   st_join(., fishnet, join=st_within) %>%
   st_drop_geometry() %>%
@@ -322,35 +353,15 @@ vars_net <- rbind(rodentBait, sanitation311, ordinanceViolation, graffiti, liquo
   na.omit() %>%
   ungroup()
 
-
+# Create long bersion
 vars_net.long <-
   gather(vars_net, Variable, value, -geometry, -uniqueID)
 
+# Create list
 vars <- unique(vars_net.long$Variable)
   mapList1 <- list()
-  
-for(i in vars){
-  mapList1[[i]] <-
-  ggplot() +
-  geom_sf(data = filter(vars_net.long, Variable == i),
-  aes(fill=value), colour=NA) +
-  scale_fill_viridis(name="") +
-  labs(title=i) +
-  mapTheme()}
-  
-do.call(grid.arrange,c(mapList1, ncol=3,
-top="Risk Factors by Fishnet"))
 
-
-```
-
-
-## Modeling Spatial Features
-
-The next chunk of code converts risk factors to nearest neighbor distances.  This feature allows us to look at risk factors in a spatially "smoothed" manner.  For all risk factors we pick k=3, indicating that we want an average distance of nearest 3 occurrences of the event. The nearest neighbor plots follow:
-
-```{r}
-# convinience to reduce length of function names.
+# Convenience to reduce length of function names.
 st_c    <- st_coordinates
 st_coid <- st_centroid
 
@@ -384,20 +395,6 @@ vars_net <- vars_net %>%
                                            st_c(liquorRetail),
                                            k = 3))
 
-## create NN from food_Inspect_Fail
-vars_net <- vars_net %>%
-    mutate(food_Inspect_Fail.nn = nn_function(st_c(st_coid(vars_net)),
-                                           st_c(foodInspectFail),
-                                           k = 3))
-
-## create NN from food_Inspect_Locations
-vars_net <- vars_net %>%
-    mutate(food_Inspect_Locations.nn = nn_function(st_c(st_coid(vars_net)),
-                                           st_c(foodInspectLocations),
-                                           k = 3))
-
-
-
 vars_net.long.nn <-
   dplyr::select(vars_net, ends_with(".nn")) %>%
   gather(Variable, value, -geometry)
@@ -417,6 +414,34 @@ mapTheme()}
 do.call(grid.arrange,c(mapList2, ncol = 3,
 top = "Nearest Neighbor risk Factors by Fishnet"))
 
+# create NN from food_Inspect_Fail
+# This comes after the others as to not appear in the group of plots
+vars_net <- vars_net %>%
+    mutate(food_Inspect_Fail.nn = nn_function(st_c(st_coid(vars_net)),
+                                           st_c(foodInspectFail),
+                                           k = 3))
+
+
+
+# Gather all .nn vars as vars_net.long.nn
+vars_net.long.nn <- 
+  dplyr::select(vars_net, ends_with(".nn")) %>%
+    gather(Variable, value, -geometry)
+
+```
+
+#### Additional Risk Factors
+
+_Distance to The Loop_ - Another factor considered by the model is distance from Chicago's downtown area called "The Loop." In the Exploratory Analysis section, it was noted that The Loop has a high number of failed inspections. This factor looks to operationalize that observation by creating a risk factor. Distance to The Loop is plotted below to the left.
+
+_Distance to Hot Spot_ - The final factor considered is the distance to a "hot spot" location, defined as major clusters of failed inspections in Chicago at a 99% or greater significance level. This time, the nearest neighbor function will be used to find the distance to a hot spot location.
+
+## Distance to Hot spot
+
+... 
+
+
+```{r fig.width=6, fig.height=4}
 #Distance to Loop to be used later
 loopPoint <-
   filter(neighborhoods, name == "Loop") %>%
@@ -424,77 +449,24 @@ loopPoint <-
   vars_net$loopDistance =
   st_distance(st_centroid(vars_net), loopPoint) %>%
   as.numeric()
+  
+ggplot() +
+    geom_sf(data = vars_net, aes(fill=loopDistance), colour=NA) +
+    scale_fill_viridis(name="loopDistance") +
+    labs(title="Distance to The Loop") +
+    mapTheme()
 
-```
-
-The plot below combines the 3-NN versions of risk factors into a single map:
-
-```{r}
-# Visualize the NN feature
-vars_net.long.nn <- 
-  dplyr::select(vars_net, ends_with(".nn")) %>%
-    gather(Variable, value, -geometry)
-
-# Display plot
-# ggplot() +
-#       geom_sf(data = vars_net.long.nn, aes(fill=value), colour=NA) +
-#       scale_fill_viridis(name="3-NN Distance") +
-#       labs(title="Risk Factors 3-NN Distance") +
-#       mapTheme()
-```
-
-Since the counts were aggregated to each cell by `uniqueID` we can use that to join the counts to the fishnet.
-
-```{r}
 ## important to drop the geometry from joining features
 final_net <-
   left_join(inspect_net, st_drop_geometry(vars_net), by="uniqueID") 
 
-```
-
-### Join in areal data
-
-We use spatial joins to attach *centroids* of fishnets to polygon for neighborhoods The map below shows the fishnet as such:
-
-```{r}
-
-
-
-final_net <-
-  st_centroid(final_net) %>%
-    st_join(dplyr::select(neighborhoods, name), by = "uniqueID") %>%
-      st_drop_geometry() %>%
-      left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
-      st_sf() %>%
-  na.omit()
-
-# for live demo
-mapview::mapview(final_net, zcol = "name")
-
-```
-
-
-
-```{r}
 ## generates warnings from PROJ issues
 ## {spdep} to make polygon to neighborhoods... 
 final_net.nb <- poly2nb(as_Spatial(final_net), queen=TRUE)
 ## ... and neighborhoods to list of weigths
 final_net.weights <- nb2listw(final_net.nb, style="W", zero.policy=TRUE)
-
 # print(final_net.weights, zero.policy=TRUE)
-```
 
-### Plotting local Moran's I results
-
-The grid map below shows the following four elements:
-
-1) Count of failed inspections in Chicago
-2) Local Morans I's: dispersal or clustering of failed inspections relative to adjacent neighborhoods
-3) P-value: statistical significance
-4) Significant Hotspots: major clusters of failed inspections in Chicago at 99% significance level
-
-```{r}
 ## see ?localmoran
 local_morans <- localmoran(final_net$countInspect, final_net.weights, zero.policy=TRUE) %>% 
   as.data.frame()
@@ -510,46 +482,6 @@ final_net.localMorans <-
   gather(Variable, Value, -geometry)
 
 
-# varList1 <- list()
-# 
-# for(i in vars){
-#   varList1[[i]] <-
-#   ggplot() +
-#     geom_sf(data = filter(final_net.localMorans, Variable==i),
-#     aes(fill = Value), colour=NA) +
-#     scale_fill_viridis(name="") +
-#     labs(title=i) +
-#     mapTheme() + theme(legend.position="bottom")}
-# 
-# do.call(grid.arrange,c(varList1, ncol = 2,
-#   top = "Local Morans I statistics, Theft"))
-  
-```
-
-
-
-```{r}
-## This is just for plotting
-vars <- unique(final_net.localMorans$Variable)
-varList2 <- list()
-
-for(i in vars){
-  varList2[[i]] <- 
-    ggplot() +
-      geom_sf(data = filter(final_net.localMorans, Variable == i), 
-              aes(fill = Value), colour=NA) +
-      scale_fill_viridis(name="") +
-      labs(title=i) +
-      mapTheme(title_size = 14) + theme(legend.position="bottom")}
-
-do.call(grid.arrange,c(varList2, ncol = 4, top = "Local Morans I statistics, Inspect"))
-```
-
-## Distance to Hot spot
-
-Once again, we'll use the nearest neighbor function to find the distance to a hot spot location.
-
-```{r}
 # generates warning from NN
 final_net <- final_net %>% 
   mutate(Inspect.isSig = 
@@ -560,10 +492,6 @@ final_net <- final_net %>%
                                            Inspect.isSig == 1))), 
                        k = 1))
 
-```
-
-
-```{r}
 ggplot() +
       geom_sf(data = final_net, aes(fill=Inspect.isSig.dist), colour=NA) +
       scale_fill_viridis(name="Inspect.isSig.dist") +
@@ -571,27 +499,15 @@ ggplot() +
       mapTheme()
 ```
 
-We'll likewise consider the distance to the main business area and the center of Chicago--the Loop. See map below.
-
-```{r}
-ggplot() +
-    geom_sf(data = vars_net, aes(fill=loopDistance), colour=NA) +
-    scale_fill_viridis(name="loopDistance") +
-    labs(title="Distance to the Loop") +
-    mapTheme()
-```
-
 
 ### Correlations
 
-The plots below show linear correlations between various features of risk factors and failed inspections in Chicago. 
-
-ADDITIONAL ANALYSIS GOES HERE
+The plots below show linear correlations between the previously explored risk factors and failed inspections in Chicago. 
 
 ```{r, fig.width=10, fig.height=20}
 correlation.long <-
   st_drop_geometry(final_net) %>%
-  dplyr::select(-uniqueID, -cvID, -name,-Sanitation_311, -Ordinance_Violations, -Graffiti, -Liquor_Retail, -Rodent_Bait, -Food_Inspect_Fail,  -Inspect.isSig.dist ) %>%
+  dplyr::select(-uniqueID, -cvID, -name, -Sanitation_311, -Ordinance_Violations, -Graffiti, -Liquor_Retail, -Rodent_Bait, -Food_Inspect_Fail,  -Inspect.isSig.dist ) %>%
   gather(Variable, Value, -countInspect)
 
 # colnames(final_net)
@@ -616,41 +532,70 @@ plotTheme()
 
 ```
 
-### Histogram
-The histogram below provides a view of the frequency of failed inspections by neighbiorhood.
 
-```{r message=FALSE, warning=FALSE}
-# cvID
+### Join in areal data
 
-# calculate errors by NEIGHBORHOOD
-HistogramInspect <-
-  final_net %>%
-    group_by(uniqueID) %>%
-    summarize(countInspect_sum = sum(countInspect, na.rm = T),
-              countInspect_mean = mean(countInspect, na.rm = T)) %>%
-  ungroup()
+We use spatial joins to attach *centroids* of fishnets to polygon for neighborhoods The map below shows the fishnet as such:
 
-# error_by_reg_and_fold %>%
-#   arrange(desc(MAE))
-# error_by_reg_and_fold %>%
-#   arrange(MAE)
+```{r}
 
-## plot histogram of theft
-HistogramInspect %>%
-  ggplot(aes(countInspect_sum)) +
-    geom_histogram(bins = 30, colour="black", fill = "#FDE725FF") +
-    scale_x_continuous(breaks = seq(0, 100, by = 5)) +
-    labs(title="Distribution of Failed Inspection Counts", subtitle = "Chicago, IL",
-         x="Theft Count", y="Count")
 
+
+final_net <-
+  st_centroid(final_net) %>%
+    st_join(dplyr::select(neighborhoods, name), by = "uniqueID") %>%
+      st_drop_geometry() %>%
+      left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
+      st_sf() %>%
+  na.omit()
+
+# for live demo
+mapview::mapview(final_net, zcol = "name")
 
 ```
 
-## Modeling
 
-The model below uses all seven risk factors as nearest neighbor functions, along with spatial features where failed inspections are significant, as independent variables. Count of failed inspections is taken as the dependent variable. The model cycles through each neighborhood as a hold out, then trains on the remaining cells.  Cross-validation is then used to generate predictions for the hold out.
+### Plotting local Moran's I results
 
-We generate four variations of the model: risk factors with and without spatial features, k-fold and spatial cross-validation.
+The grid map below shows the following four elements:
+
+1) Count of failed inspections in Chicago
+2) Local Morans I's: dispersal or clustering of failed inspections relative to adjacent neighborhoods
+3) P-value: statistical significance
+4) Significant Hotspots: major clusters of failed inspections in Chicago at 99% significance level
+
+
+```{r}
+## This is just for plotting
+vars <- unique(final_net.localMorans$Variable)
+varList2 <- list()
+
+for(i in vars){
+  varList2[[i]] <- 
+    ggplot() +
+      geom_sf(data = filter(final_net.localMorans, Variable == i), 
+              aes(fill = Value), colour=NA) +
+      scale_fill_viridis(name="") +
+      labs(title=i) +
+      mapTheme(title_size = 14) + theme(legend.position="bottom")}
+
+do.call(grid.arrange,c(varList2, ncol = 4, top = "Local Morans I statistics, Inspect"))
+```
+
+
+
+
+
+
+# Modeling with Cross Validation
+
+As briefly outlined earlier, k-fold validation not only provides a measure of the model’s performance, but also provides the actual predictions that will be used to forecast failed inspections. For a given cell, k-fold validation uses the rest of the cells as a training set to produce an individualized model that predicts only for that single cell. This process is carried out for every cell, the result is a predicted value for every cell.
+
+This was not the only kind of validation considered as a part of this project, however. ‘Leave-one-group-out’ cross-validation (LOGO-CV) was also considered. LOGO CV considers groups of data (in this case, Chicago’s neighborhoods), and trains the whole model on every possible combination of groups such that one group is always missing from the analysis. This may help when one group has a unique relationship to data analyzed.  
+
+Also, two versions of each cross-validation method were undertaken. "Just Risk Factors" includes only the food inspection failures, food inspection locations, and the five factors from Chicago's open data website, whereas "Spatial Process" includes all factors introduced to the model.
+
+In total four variations of the model are generated: risk factors with and without spatial features, each with k-fold and spatial cross-validation versions.
 
 ```{r, results='hide'}
 
@@ -686,16 +631,14 @@ crossValidate <- function(dataset, id, dependentVariable, indVariables) {
  return(st_sf(allPredictions))
 }
 
-
-
 # View(crossValidate)
 
 ## define independent variables
-reg.ss.vars <- c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "food_Inspect_Locations.nn", "Inspect.isSig", "Inspect.isSig.dist", "loopDistance")
+reg.ss.vars <- c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "Food_Inspect_Locations", "Inspect.isSig", "Inspect.isSig.dist", "loopDistance")
 
 ## define independent variables with spatial features
 reg.vars <-
-c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "food_Inspect_Locations.nn")
+c("rodent_Bait.nn", "sanitation_311.nn","ordinance_Violation.nn", "graffiti.nn", "liquor_Retail.nn", "food_Inspect_Fail.nn", "Food_Inspect_Locations")
 
 ## RUN REGRESSIONS
 reg.ss.spatialCV <- crossValidate(
@@ -731,14 +674,7 @@ reg.spatialCV <- crossValidate(
 
 ```
 
-### Cross-validation
 
-Model errors are plotted in a histogram below.  The mode of mean absolute errors is 2 thefts.  The model can benefit from further refinement based on the presence of neighborhoods with significant errors. 
-
-Most grievous errors occur in neighborhoods near the Loop and the... 
-
-
-Comparing mean errors between models shows that spatial features improve our models significantly, compared to using just the risk factors.  The comparison map confirms this finding.
 
 ```{r}
 reg.summary <-rbind(
@@ -799,17 +735,6 @@ st_drop_geometry(error_by_reg_and_fold) %>%
   row_spec(4, color = "black", background = "#FDE725FF")
 
 
-## map of errors by neighborhood
-error_by_reg_and_fold %>%
-  filter(str_detect(Regression, "LOGO")) %>%
-  ggplot() +
-  geom_sf(aes(fill = MAE)) +
-  facet_wrap(~Regression) +
-  scale_fill_viridis() +
-  labs(title = "Theft errors by LOGO-CV Regression") +
-mapTheme() + theme(legend.position="bottom")
-
-
 ## neighborhood weights
 
 neighborhood.weights <-
@@ -832,109 +757,6 @@ neighborhood.weights <-
 
 ```
 
-## Density vs Predictions
-
-Next we'll use kernel density with varying search radii: 1000, 1500 and 2000 feet.  Map below shows the visualization by 3 different search radii.
-
-
-```{r}
-# demo of kernel width
-inspect_ppp <- as.ppp(st_coordinates(FoodInspect), W = st_bbox(final_net))
-inspect_KD.1000 <- spatstat.core::density.ppp(inspect_ppp, 1000)
-inspect_KD.1500 <- spatstat.core::density.ppp(inspect_ppp, 1500)
-inspect_KD.2000 <- spatstat.core::density.ppp(inspect_ppp, 2000)
-inspect_KD.df <- rbind(
-  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.1000), as(neighborhoods, 'Spatial')))), Legend = "1000 Ft."),
-  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.1500), as(neighborhoods, 'Spatial')))), Legend = "1500 Ft."),
-  mutate(data.frame(rasterToPoints(mask(raster(inspect_KD.2000), as(neighborhoods, 'Spatial')))), Legend = "2000 Ft."))
-
-inspect_KD.df$Legend <- factor(inspect_KD.df$Legend, levels = c("1000 Ft.", "1500 Ft.", "2000 Ft."))
-
-ggplot(data=inspect_KD.df, aes(x=x, y=y)) +
-  geom_raster(aes(fill=layer)) +
-  facet_wrap(~Legend) +
-  coord_sf(crs=st_crs(final_net)) +
-  scale_fill_viridis(name="Density") +
-  labs(title = "Kernel density with 3 different search radii") +
-  mapTheme(title_size = 14)
-```
-
-
-Kernel density can be viewed on the fishnet with 1500 instances of failed inspections.
-
-```{r}
-
-as.data.frame(inspect_KD.1000) %>%
-  st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
-  aggregate(., final_net, mean) %>%
-   ggplot() +
-     geom_sf(aes(fill=value)) +
-     geom_sf(data = sample_n(FoodInspect, 1500), size = .5) +
-     scale_fill_viridis(name = "Density") +
-     labs(title = "Kernel density of 2018 failed inspections") +
-     mapTheme(title_size = 14)
-```
-
-## Get 2018 failed inspection data
-
-To evaluate the generalizability of our model we'll apply our predictions and compare the results to 2018 failed inspection statistics.
-
-```{r, results = FALSE}
-FoodInspect19 <-
-  read.socrata("https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5") %>%
-    mutate(year = substr(inspection_date,1,4)) %>% filter(year == "2019") %>%
-    # filter(results=="Fail") %>%
-    dplyr::select(Y = latitude, X = longitude) %>%
-    na.omit() %>%
-    st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-    st_transform(st_crs(fishnet)) %>%
-    mutate(Legend = "Food_Inspect")
-```
-
-### Generalizability across Race Contexts
-
-ACS data allows us to evaluate generalizability by race contexts.
-
-...Do we even want to include this?
-
-```{r, include=FALSE}
-
-census_api_key("94efffd19b56ad527e379faea1653ee74dc3de4a",overwrite = TRUE)
-
-tracts18 <-
-  get_acs(geography = "tract",
-  variables = c("B01001_001E","B01001A_001E"),
-    year = 2018, state=17, county=031, geometry=T) %>%
-  st_transform('ESRI:102271') %>%
-  dplyr::select(variable, estimate, GEOID) %>%
-  spread(variable, estimate) %>%
-  rename(TotalPop = B01001_001,
-  NumberWhites = B01001A_001) %>%
-    mutate(percentWhite = NumberWhites / TotalPop,
-  raceContext = ifelse(percentWhite > .5,
-    "Majority_White", "Majority_Non_White")) %>%
-    .[neighborhoods,]
-
-
-reg.summary %>%
-  filter(str_detect(Regression, "LOGO")) %>%
-  st_centroid() %>%
-  st_join(tracts18) %>%
-  na.omit() %>%
-  st_drop_geometry() %>%
-  group_by(Regression, raceContext) %>%
-  summarize(mean.Error = mean(Error, na.rm = T)) %>%
-  spread(raceContext, mean.Error) %>%
-  kable(caption ="Mean Error by neighborhood racial context") %>%
-kable_styling("striped", full_width = F)
-
-
-
-```
-
-One idea would be to run the model with for 2019, with the variables of 2018 except having 2019's inspection location data (since presumably there is information as to where restaraunts are that need inspecting).
-
-This means running the glm() function outside of the cross validation method, but I think it might be worth it. Apologies for not getting to that over the weekend!
 
 
 <!-- ```{r} -->
