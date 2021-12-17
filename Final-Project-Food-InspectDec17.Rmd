@@ -11,7 +11,8 @@ output:
       collapsed: false
       smooth_scroll: true
 ---
-
+A short PechaKucha style presentation of the application can be viewed here: 
+[![CLICK HERE](CoverSlide.jpg)](https://youtu.be/qqpEqwANbVE)
 
 # Introduction
 On July 1st, 2016, Chicago Department of Public Health (CDPH) identified an E. coli outbreak linked to a restaurant in Bridgeport neighborhood of Chicago.  Within days, the number of cases swelled from initially report 25 cases to 65.  The outbreak resulted in stunning 20 hospitalizations.  By the time, the dust settled, over 100 people, including 40 food handlers from the restaurant, suffered illness.  The outbreak, one of the worst in the cities recent history, exposed the critical work conducted by the city's restaurant safety inspectors.  Their report of the July 1st inspection identified <strong>critical failure</strong> in revealing "improper temperatures for several food items".  The actions mitigated the effect of an outbreak which could have been much worse, had it not been identified promptly. 
