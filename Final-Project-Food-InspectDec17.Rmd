@@ -544,10 +544,13 @@ The basic results of these analyses confirm our expectations. _Inspection Locati
 
 The grid map below shows the following four elements:
 
-_CountInspect_: Count of failed inspections in Chicago
-_Local_Morans_I_: Dispersal or clustering of failed inspections relative to adjacent neighborhoods
-_P-value_: Statistical significance of the relationship where exceptionally low
-_Significant_Hotspots_: Major clusters of failed inspections in Chicago at 99% significance level
+1) _CountInspect_: Count of failed inspections in Chicago
+
+2) _Local_Morans_I_: Dispersal or clustering of failed inspections relative to adjacent neighborhoods
+
+3) _P-value_: Statistical significance of the relationship where exceptionally low
+
+4) _Significant_Hotspots_: Major clusters of failed inspections in Chicago at 99% significance level
 
 ```{r}
 ## This is just for plotting
@@ -746,7 +749,7 @@ The model is also useful in that it can be easily understood and explained relat
 
 Several additional elements of this application help this model meet its use case, including tiered scheduling, a weather-specific inspection trigger mechanism, and 311 call inspection trigger mechanism.
 
-### Tiered Scheduling
+#### Tiered Scheduling
 
 Once this model produces a set of predictions for a given year, its work is not yet done. Having used its modeling feature to create a set of predictions, the application assigns teams of inspectors to groups of fishnet cells with proportional numbers of predicted inspectors. These teams can get to know an area and the local health factors that are relevant to restaurants in their zone. 
 
@@ -760,7 +763,7 @@ Weather has been shown to have measurable impacts on food inspection pass rates.
 
 Our application also makes the most of Chicago's 311 non-emergency City Services line with a mechanism to prioritize inspections in response to repeated calls. When excessive calls regarding a restaurant needing inspection are logged from different numbers (to prevent abuse of the mechanism) on multiple different days (to avoid over-penalization of specific events that result in multiple calls) over the course of a two-week period, an inspection is immediately triggered.
 
-#### Shortening the Feedback Loop
+### Shortening the Feedback Loop
 
 Our model, supplemented with the previously mentioned additional elements, is designed with the big-picture goal of "shortening the feedback loop" in mind. The feedback loop that exists in food inspection where restaurants follow or fail to follow health codes, are inspected, and take the result into account whether they choose to follow or fail to follow health codes. 
 
@@ -768,4 +771,4 @@ When restaurants choose unsafe practices, it is critical that this feedback loop
 
 # 8. Improvement
 
-There are several ways that the model - the foundation of the application - could be improved. First, predictions for a given year would likely be improved if they considered prospective inspection locations for that year. Ostensibly, the city has a database of locations it expects to inspect in a given year long before the year starts, and the use of this data could significantly improve the model. Additionally, more temporally-specific predictions could make scheduling inspectors more efficient. Predicting the failures expected for a quarter rather than a year would allow for better overall process. Finally, measures could be taken to ensure the model is not overly punitive of small and minority-owned businesses due to neighborhood-level factors out of the businessowners' control. A good model of inspections must consider spatial factors, and while implicit bias will always be present, but it is the job of the data scientist to discern and minimize its impact on the predictions.
+There are several ways that the model - the foundation of the application - could be improved. First, predictions for a given year would likely be improved if they considered prospective inspection locations for that year. Ostensibly, the city has a database of locations it expects to inspect in a given year long before the year starts, and the use of this data could significantly improve the model. Additionally, more temporally-specific predictions could make scheduling inspectors more efficient. Predicting the failures expected for a quarter rather than a year would allow for better overall process. Finally, measures could be taken to ensure the model is not overly punitive of small and minority-owned businesses due to neighborhood-level factors out of the business owners' control. A good model of inspections must consider spatial factors, and while implicit bias will always be present, it is the job of the data scientist to discern and minimize its impact on the predictions.
