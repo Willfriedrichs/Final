@@ -14,15 +14,12 @@ output:
 A short PechaKucha style presentation of the application can be viewed here: 
 [![CLICK HERE](CoverSlide.jpg)](https://youtu.be/qqpEqwANbVE)
 
-# Introduction
+# 1. Introduction
 On July 1st, 2016, Chicago Department of Public Health (CDPH) identified an E. coli outbreak linked to a restaurant in Bridgeport neighborhood of Chicago.  Within days, the number of cases swelled from initially report 25 cases to 65.  The outbreak resulted in stunning 20 hospitalizations.  By the time, the dust settled, over 100 people, including 40 food handlers from the restaurant, suffered illness.  The outbreak, one of the worst in the cities recent history, exposed the critical work conducted by the city's restaurant safety inspectors.  Their report of the July 1st inspection identified <strong>critical failure</strong> in revealing "improper temperatures for several food items".  The actions mitigated the effect of an outbreak which could have been much worse, had it not been identified promptly. 
 
-This application presents a helpful tool to spatially predict inspections needed, created by forecasting the number of restaurant inspection failures (and thus, the number of additional inspections required) in Chicago for a given year. 
-
-The city of Chicago employs approximately 3 dozen restaurant food inspectors.  With over 15,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Our application, presented here, allows for greater precision in anticipating possible inspection failures using machine-learning algorithms.  In adopting our application, the city of Chicago shortens the feedback loop in identification of critical failures, thus preventing future outbreak.  In addition to improving public health outcomes, our application improves the allocation of the limited number of inspectors yielding greater efficiency.  The built-in scheduling algorithm prioritizes inspections in the high risk areas with  mechanisms for revising inspector schedules based on latest available data.  We know that certain risk-factors can significantly increase chance of a failure--we incorporate these risks real-time.
-
-<!-- Restaurants failing inspection are legally required to receive an additional visit by the Chicago Health Department, so it is especially important for the city to be aware of locations where inspection failures might be common.  Our application would allow the City of Chicago to predict food inspection failures the year before inspectors are allocated to restaurants and other food vendors. The City's Health Department would use this application to prepare their plans for the distribution of health inspectors across the city. -->
-
+This application would help the city avoid these kinds of incidents by forecasting the number of restaurant inspection failures in Chicago for a given year, giving the city a better idea of the total number of inspections needed and informing its distribution of health inspectors across the city.
+x
+The City of Chicago employs approximately 3 dozen restaurant food inspectors.  With over 15,000 inspections taking place in Chicago in 2019 alone, the sheer volume of this task necessitates prediction-aided planning. Our application, presented here, allows for greater precision in anticipating possible inspection failures using machine-learning algorithms.  In adopting our application, the city of Chicago shortens the feedback loop in identification of critical failures, thus preventing future outbreak.  In addition to improving public health outcomes, our application improves the allocation of the limited number of inspectors yielding greater efficiency.  The built-in scheduling algorithm prioritizes inspections in the high risk areas with  mechanisms for revising inspector schedules based on latest available data.  We know that certain risk-factors can significantly increase chance of a failure--we incorporate these risks real-time.
 
 
 ```{r setup, include=FALSE}
@@ -89,7 +86,7 @@ FoodInspectAll <- Food %>%
 ```
 
 
-# Exploratory Analysis
+# 2. Exploratory Analysis
 
   For anyone wishing to replicate this analysis, we emphasize the importance of visually understanding the spatial distribution of general restaurant inspection failure counts. It is also important to know the spatial layout of independent variables—the factors we use to predict Chicago’s inspection failures. This section provides an overview of our exploratory analysis.
 	
@@ -117,7 +114,7 @@ ggplot() +
 
   Several clusters immediately stand out. The darkest cluster, to the east, is the Loop. There are also higher numbers of failed inspections along the North Shore, and to the west in Lawndale. The spatial clustering of failed inspections is a good sign that spatial analysis is appropriate in predicting failed inspections. 
   
-  One of the most important spatial factors in predicting inspection failures is restaurant locations. There cannot be a failure without a restaurant to be inspected in the first place, after all. When examining all restaurant inspection locations, this time, we will map density as a layer rather than plotting each establishment individually. This avoids situations where data for restaurants in close proximity could be obscured due to overlapping, which would be more of a problem given the size of the all-restaurants dataset. Displayed below are side-by-side density maps of all restaurants logged for inspection in 2018 and restaurant inspection failures for that year.
+Perhaps the most important spatial factors in predicting inspection failures is restaurant locations. There cannot be a failure without a restaurant to be inspected in the first place, after all. When examining all restaurant inspection locations, this time, we will map density as a layer rather than plotting each establishment individually. This avoids situations where data for restaurants in close proximity could be obscured due to overlapping, which would be more of a problem given the size of the all-restaurants dataset. Displayed below are side-by-side density maps of all restaurants logged for inspection in 2018 and restaurant inspection failures for that year.
 
 ```{r fig.width=6, fig.height=4}
 grid.arrange(ncol=2,
@@ -177,7 +174,7 @@ grid.arrange(ncol=2,
 
 Failed inspections for 2017 and 2018 look very similar. This supports the notion that one year's failed inspections can be used to predict those of the next year. Some of the differences can be attributed to the fact that a slightly different set of restaurants are inspected each year. For example, food inspections in 2019 covered 387 additional restaurants compared to 2018. 
 
-# Our Spatial Process: the Fishnet
+# 3. Our Spatial Process: the Fishnet
 
 An ideal spatial process for our model must take into account factors that are relevant at a local level, and that factors affecting one restaurant are very likely to affect those nearby. Additionally, rather than predicting outcomes of individual scheduled inspections on a restaurant by restaurant basis, a spatial process should be used that is compatible with the fact that new establishments are added to the database on a yearly basis.
 
@@ -220,13 +217,15 @@ HistogramInspect %>%
 
 The histogram above illustrates the distribution of cells according to their actual number of failed restaurants for 2018. Of the 2500 cells that comprise Chicago's area, just over half recorded no failed inspections. The vast majority of cells that did have failed inspections had less than 10, though a few individual cells had 30 or more. When our 2018 model is used to predict failures by fishnet cell for 2019, predictions will have a similar distribution. Our spatial process should produce a similar result, as its estimates will reflect the clustered nature of restaurant failures in Chicago when it makes its predictions.
 
-# Modeling Approach and Risk Factors
+# 4. Our Modeling Approach: Spatial Risk Factors
 
-As stated in the introduction, the goal of the model itself is to spatially predict failed inspections such that an estimate of the total number of inspections can be used to more efficiently allocate inspectors throughout Chicago. To predict inspection failures for a target year, our model uses a generalized linear model. Specifically, our model creates a function which, for each cell in the fishnet, takes a set of dependent variables and returns a predicted number of restaurant inspection failures. The actual predictions for each cell that are used as forecasts of failed inspections for each cell are outputs of k-fold validation. This will be explored in more detail in the next section, but the basic idea is that the predictions created by k-fold cross validation of one year’s data are used as predictions for the ensuing year. 
+As stated in the introduction, the goal of the model itself is to spatially predict failed inspections such that an estimate of the total number of inspections can be used to more efficiently allocate inspectors throughout Chicago. To predict inspection failures for a target year, our model uses a generalized linear model. Specifically, our model creates a function which, for each cell in the fishnet, takes a set of dependent variables and returns a predicted number of restaurant inspection failures. The actual predictions for each cell that are used as forecasts of failed inspections for a given year are outputs of k-fold validation of data from the prior year. This will be explored in more detail in the next section, but the basic idea is that the predictions created by k-fold cross validation of one year's risk factors data and actual failure counts are used as predictions for the ensuing year. 
 
-This process, however, is only possible with a set of independent variables whose spatial variation collectively do well to predict restaurant inspection failures. Each independent variable or "risk factor" is explored in more detail in the subsections below.
+### Risk Factor Descriptions
 
-#### Inspection Locations and Three Nearest Neighbors of Inspection Failure Locations
+Our approach is to make this process successful by using a set of independent variables whose spatial distributions collectively do well to predict restaurant inspection failures. Each independent variable or "risk factor" is explored in more detail in the subsections below.
+
+#### Inspection Locations and 3NN of Inspection Failure Locations
 
 _Inspection Locations_ - As described in the previous section, inspection locations are vital predictors of the next year's failure locations. In order for a restaurant to fail an inspection, the inspection must take place at a location, and chances are that location is contained within the set of the previous year's inspection locations. Like the rest of the risk factors, inspection locations are used in their fishnet form. 
 
@@ -261,7 +260,7 @@ foodInspectFail <-
 
 #### Six Risk Factors from the Chicago Open Data Portal
 
-The following risk factors are considered to be potential predictors of Failed Food Inspections, and are accessed from the Chicago Open Data Portal:
+The following risk factors are considered to be potential predictors of Failed Food Inspections, and are accessed from the Chicago Open Data Portal. All five of these risk factors use Three Nearest Neighbor (3NN) analysis. While it would not break the model's generalizability to use these data in their raw form, 3NN versions of these risk factors tended to perform slightly better in the model. 
 
 _Rodent Complaints (3NN)_ - This variable records location-based 311 service requests for rodent baiting over a year. There were 39,023 instances in 2018.
 
@@ -338,7 +337,7 @@ liquorRetail <-
   mutate(Legend = "Liquor_Retail")
 ```
 
-All five of these risk factors use Three Nearest Neighbor analysis. While it would not break the model's generalizability to use these data in their raw form, Three Nearest Neighbor versions of these risk factors tended to perform slightly better in the model. The plot below combines the five new risk factors into a single map below. Note that the lighter colors correspond to cells farther from these factors, meaning that in this case, cells with darker colors have a higher likelihood of failed inspections being predicted in them.  
+The plot below displays maps of each of the previously listed risk factors. Note that the lighter colors correspond to cells farther from these factors, meaning that in this case, cells with darker colors have a higher likelihood of failed inspections being predicted in them.  
 
 ```{r}
 # Create a binded set of nets with the variables of interest collected thus far
@@ -435,14 +434,11 @@ vars_net.long.nn <-
 
 _Distance to The Loop_ - Another factor considered by the model is distance from Chicago's downtown area called "The Loop." In the Exploratory Analysis section, it was noted that The Loop has a high number of failed inspections. This factor looks to operationalize that observation by creating a risk factor. Distance to The Loop is plotted below to the left.
 
-_Distance to Hot Spot_ - The final factor considered is the distance to a "hot spot" location, defined as major clusters of failed inspections in Chicago at a 99% or greater significance level. This time, the nearest neighbor function will be used to find the distance to a hot spot location.
+_Significant Hot Spot (3NN)_ - Also considered is the mean distance to each cell's three nearest "hot spot" neighbors. A cell is marked as a hot spot if it has a higher failure count higher than it would have in at least 99% of spatially random distributions of inspection failures. This is generated via a three nearest neighbors analysis of a grid of hot spot cells, and is plotted below to the right.
 
-## Distance to Hot spot
+_Is Significant Hot Spot_ - The binary variable mapping whether a given cell is a hot spot or not is also included.
 
-... 
-
-
-```{r fig.width=6, fig.height=4}
+```{r}
 #Distance to Loop to be used later
 loopPoint <-
   filter(neighborhoods, name == "Loop") %>%
@@ -450,12 +446,6 @@ loopPoint <-
   vars_net$loopDistance =
   st_distance(st_centroid(vars_net), loopPoint) %>%
   as.numeric()
-  
-ggplot() +
-    geom_sf(data = vars_net, aes(fill=loopDistance), colour=NA) +
-    scale_fill_viridis(name="loopDistance") +
-    labs(title="Distance to The Loop") +
-    mapTheme()
 
 ## important to drop the geometry from joining features
 final_net <-
@@ -492,23 +482,29 @@ final_net <- final_net %>%
                        st_c(st_coid(filter(final_net, 
                                            Inspect.isSig == 1))), 
                        k = 1))
-
-ggplot() +
-      geom_sf(data = final_net, aes(fill=Inspect.isSig.dist), colour=NA) +
-      scale_fill_viridis(name="Inspect.isSig.dist") +
-      labs(title="NN Distance to Highly Significant \nFailed Inspect Clusters") +
-      mapTheme()
+grid.arrange(ncol=2,
+  ggplot() +
+    geom_sf(data = vars_net, aes(fill=loopDistance), colour=NA) +
+    scale_fill_viridis(name="loopDistance") +
+    labs(title="Distance to The Loop") +
+    mapTheme(),
+  ggplot() +
+    geom_sf(data = final_net, aes(fill=Inspect.isSig.dist), colour=NA) +
+    scale_fill_viridis(name="Inspect.isSig.dist") +
+    labs(title="NN Distance to Significant \nFailed Inspect Clusters") +
+    mapTheme()
+)
 ```
 
 
-### Correlations
+### Risk Factor Correlations
 
-The plots below show linear correlations between the previously explored risk factors and failed inspections in Chicago. 
+As a part of our modeling approach, we analyzed individual linear relationships between 2018 risk factors and 2018 inspection failures across Chicago's fishnet cells. The results of this analysis are displayed in the plots below, with the r-value of each relationship (1.0 corresponding to the strongest positive correlation, 0.0 corresponding to no correlation, and -1.0 corresponding to the strongest negative correlation) displayed in the upper-left corner of each plot.
 
 ```{r, fig.width=10, fig.height=20}
 correlation.long <-
   st_drop_geometry(final_net) %>%
-  dplyr::select(-uniqueID, -cvID, -Sanitation_311, -Ordinance_Violations, -Graffiti, -Liquor_Retail, -Rodent_Bait, -Food_Inspect_Fail,  -Inspect.isSig.dist ) %>%
+  dplyr::select(-uniqueID, -cvID, -Sanitation_311, -Ordinance_Violations, -Graffiti, -Liquor_Retail, -Rodent_Bait, -Food_Inspect_Fail) %>%
   gather(Variable, Value, -countInspect)
 
 # colnames(final_net)
@@ -530,18 +526,9 @@ facet_wrap(~Variable, ncol = 2, scales = "free") +
 labs(title = "Failed inspection count as a function of risk factors") +
 plotTheme()
 
+# Join neighborhood data by attaching centroids of fishnets to a polygon of neighborhoods. 
 
-```
-
-
-### Join in areal data
-
-We use spatial joins to attach *centroids* of fishnets to polygon for neighborhoods The map below shows the fishnet as such:
-
-```{r}
-
-
-
+# This will be useful later
 final_net <-
   st_centroid(final_net) %>%
     st_join(dplyr::select(neighborhoods, name), by = "uniqueID") %>%
@@ -549,22 +536,18 @@ final_net <-
       left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
       st_sf() %>%
   na.omit()
-
-# for live demo
-mapview::mapview(final_net, zcol = "name")
-
 ```
 
+The basic results of these analyses confirm our expectations. _Inspection Locations_ has the most significant linear relationship with inspection failure locations. _Is Significant Hot Spot_ also stood out, the binary version markedly more correlated than _Significant Hot Spot (3NN)_. _Distance to The Loop_ had a negative correlation with inspection failures, as expected. _Inspection Failure Locations (3NN)_, in addition to the five other 3NN risk factors from the Chicago Data Portal, had slight negative correlations with inspection failures. At a glance, these relationships look more logarithmic than linear. Surprisingly, log versions of these variables did not provide for a more robust model. Despite experimentation with logarithmic feature engineering, _Inspection Failure Locations (3NN)_ and the other 3NN Chicago Data Portal risk factors are included in their original forms in the final version of the model. 
 
-### Plotting local Moran's I results
+### Local Moran's I results
 
 The grid map below shows the following four elements:
 
-1) Count of failed inspections in Chicago
-2) Local Morans I's: dispersal or clustering of failed inspections relative to adjacent neighborhoods
-3) P-value: statistical significance
-4) Significant Hotspots: major clusters of failed inspections in Chicago at 99% significance level
-
+_CountInspect_: Count of failed inspections in Chicago
+_Local_Morans_I_: Dispersal or clustering of failed inspections relative to adjacent neighborhoods
+_P-value_: Statistical significance of the relationship where exceptionally low
+_Significant_Hotspots_: Major clusters of failed inspections in Chicago at 99% significance level
 
 ```{r}
 ## This is just for plotting
@@ -583,20 +566,22 @@ for(i in vars){
 do.call(grid.arrange,c(varList2, ncol = 4, top = "Local Morans I statistics, Inspect"))
 ```
 
+These four elements clearly indicate spatial patterns in the failed inspections data. This supports the use of a fishnet-based model of prediction. It also supports the decision to take a spatial approach in selecting risk factors - if spatial relationships are key to understanding failed inspections, they are likely key to predicting failed inspections too.
 
+# 5. Modeling with Cross Validation
 
+As briefly outlined earlier, k-fold validation provides not only a measure of the model’s performance - it creates the actual predictions that will be used to forecast failed inspections. For a given cell, k-fold validation uses the rest of the cells as a training set to produce an individualized model that predicts only for that single cell. This process is carried out for every cell, the result is a predicted value for each one. These predictions are used to forecast the number of failures per cell in the following year.
 
+K-fold was not the only kind of validation considered as a part of this project. ‘Leave-one-group-out’ cross-validation (LOGO-CV) was also considered. LOGO CV considers groups of data (in this case, Chicago’s neighborhoods), and trains the whole model on every possible combination of groups such that one group is always missing from the analysis. This may help when one group has a unique relationship to the dependent variable.  
+Two versions of each cross-validation method were undertaken, each using a different set of independent variables. The first, more limited set includes only the food inspection failures, food inspection locations, and the five factors from Chicago's open data website. The second set of independent variables for each cross-validation method includes all of the previously listed risk factors. In total, four variations of the model are generated.
 
+1) _Random k-fold CV: Limited Set_
 
-# Modeling with Cross Validation
+2) _Random k-fold CV: All Risk Factors_
 
-As briefly outlined earlier, k-fold validation not only provides a measure of the model’s performance, but also provides the actual predictions that will be used to forecast failed inspections. For a given cell, k-fold validation uses the rest of the cells as a training set to produce an individualized model that predicts only for that single cell. This process is carried out for every cell, the result is a predicted value for every cell.
+3) _Spatial LOGO-CV: Limited Set_
 
-This was not the only kind of validation considered as a part of this project, however. ‘Leave-one-group-out’ cross-validation (LOGO-CV) was also considered. LOGO CV considers groups of data (in this case, Chicago’s neighborhoods), and trains the whole model on every possible combination of groups such that one group is always missing from the analysis. This may help when one group has a unique relationship to data analyzed.  
-
-Also, two versions of each cross-validation method were undertaken. "Just Risk Factors" includes only the food inspection failures, food inspection locations, and the five factors from Chicago's open data website, whereas "Spatial Process" includes all factors introduced to the model.
-
-In total four variations of the model are generated: risk factors with and without spatial features, each with k-fold and spatial cross-validation versions.
+4) _Spatial LOGO-CV: All Risk Factors_
 
 ```{r, results='hide'}
 
@@ -673,29 +658,23 @@ reg.spatialCV <- crossValidate(
   indVariables = reg.vars) %>%
   dplyr::select(cvID = name, countFailures, Prediction, geometry)
 
-```
-
-
-
-```{r}
 reg.summary <-rbind(
   mutate(reg.cv,
   Error = Prediction - countFailures,
-  Regression = "Random k-fold CV: Just Risk Factors"),
+  Regression = "Random k-fold CV: Limited Set"),
 
   mutate(reg.ss.cv,
   Error = Prediction - countFailures,
-  Regression = "Random k-fold CV: Spatial Process"),
+  Regression = "Random k-fold CV: All Risk Factors"),
 
   mutate(reg.spatialCV,
   Error = Prediction - countFailures,
-  Regression = "Spatial LOGO-CV: Just Risk Factors"),
+  Regression = "Spatial LOGO-CV: Limited Set"),
 
   mutate(reg.ss.spatialCV,
   Error = Prediction - countFailures,
-  Regression = "Spatial LOGO-CV: Spatial Process")) %>%
+  Regression = "Spatial LOGO-CV: All Risk Factors")) %>%
 st_sf()
-
 
 # calculate errors by NEIGHBORHOOD
 error_by_reg_and_fold <-
@@ -711,7 +690,17 @@ error_by_reg_and_fold %>%
 
 # error_by_reg_and_fold %>%
 #   arrange(MAE)
+```
 
+### Measuring Model Accuracy and Generalizability
+
+For our model, we wanted to adopt the version of these four models which, using 2018 data, could make the most accurate and generalizable predictions of 2018 failure counts. A model's ability to predict for its own year in an *accurate* and *generalizable* way points to effectiveness in consistently providing well-grounded predictions for the following year.
+
+A model's accuracy can be assessed with Mean Absolute Error (MAE). The MAE of a model measures the average difference between true value and predicted value across each data point (for the purposes of these model variations, each fishnet cell). A model's MAE is an indicator of its accuracy. Generalizability can also be analyzed by considering MAE across different portions of a dataset. Even if overall MAE is low, there may be portions of the dataset where predictions perform disproportionately poorly. 
+
+To compare model generalizability, The distributions of MAE across Chicago neighborhood are displayed for each of the four model variations. Below, mean neighborhood MAE and the size of a standard deviation are also displayed.
+
+```{r}
 ## plot histogram of OOF (out of fold) errors
 error_by_reg_and_fold %>%
   ggplot(aes(MAE)) +
@@ -724,7 +713,6 @@ error_by_reg_and_fold %>%
   x="Mean Absolute Error", y="Count") +
 plotTheme()
 
-
 ## Errors by Model
 st_drop_geometry(error_by_reg_and_fold) %>%
   group_by(Regression) %>%
@@ -734,106 +722,50 @@ st_drop_geometry(error_by_reg_and_fold) %>%
   kable_styling("striped", full_width = F) %>%
   row_spec(2, color = "black", background = "#FDE725FF") %>%
   row_spec(4, color = "black", background = "#FDE725FF")
-
-
-## neighborhood weights
-
-neighborhood.weights <-
-  filter(error_by_reg_and_fold,
-  Regression == "Spatial LOGO-CV: Spatial Process") %>%
-  group_by(cvID) %>%
-  poly2nb(as_Spatial(.), queen=TRUE) %>%
-  nb2listw(., style="W", zero.policy=TRUE)
-    filter(error_by_reg_and_fold, str_detect(Regression, "LOGO")) %>%
-  st_drop_geometry() %>%
-  group_by(Regression) %>%
-  summarize(Morans_I =
-  moran.mc(abs(Mean_Error), neighborhood.weights,
-    nsim = 999, zero.policy = TRUE,
-      na.action=na.omit)[[1]],
-    p_value =
-      moran.mc(abs(Mean_Error), neighborhood.weights,
-    nsim = 999, zero.policy = TRUE,
-    na.action=na.omit)[[3]])
-
 ```
 
+Based on the mean and standard deviations of the MAE distributions, _Random k-fold CV: All Risk Factors_ is the most accurate and generalizable model. There are no neighborhoods in this model that produce a mean of more than one error, and compared with the other model variations, a higher number of neighborhoods produce no error at all. This is the model variation we select to predict annual inspection failures.
 
+# 6. Model Usefulness
 
-<!-- ```{r} -->
-<!-- inspect_KDE_sf <- as.data.frame(inspect_KD.1000) %>% -->
-<!--   st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>% -->
-<!--   aggregate(., final_net, mean) %>% -->
-<!--   mutate(label = "Kernel Density", -->
-<!--          Risk_Category = ntile(value, 100), -->
-<!--          Risk_Category = case_when( -->
-<!--            Risk_Category >= 90 ~ "90% to 100%", -->
-<!--            Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%", -->
-<!--            Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%", -->
-<!--            Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%", -->
-<!--            Risk_Category >= 1 & Risk_Category  <= 29 ~ "1% to 29%")) %>% -->
-<!--   cbind( -->
-<!--     aggregate( -->
-<!--       dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>% -->
-<!--     mutate(inspectCount = replace_na(inspectCount, 0))) %>% -->
-<!--   dplyr::select(label, Risk_Category, inspectCount) -->
-<!-- ``` -->
+The model and its capability to predict Chicago food inspection failures is useful to a variety of municipal agencies and officials. This is because it allows for a data-driven, cost-effective distribution of the city's 36 food inspectors. Failed inspections require follow-up inspections, so by forecasting the distribution of failures, cities and their employees can make a better determination of how many total inspections will be necessary in a given year. 
 
+The plot below illustrates predictions generated for the year 2019. For each cell in the fishnet, a value is generated to forecast the number of failures that will be logged over the course of the year. The value is not a whole number - it is designed to give as much information as possible to its user rather to produce a discrete prediction for each cell. This gives the user a sharper and more specific understanding of the tool's results.
 
+```{r}
+ggplot() + 
+  geom_sf(data = reg.ss.cv, aes(fill = Prediction), size=0.1, show.legend = "point") +
+  scale_fill_viridis(name="Prediction") +
+  labs(title= "2019 Predictions for Failed Food Inspections") +
+  mapTheme()
+```
 
-<!-- ```{r} -->
-<!-- inspect_risk_sf <- -->
-<!--   reg.ss.spatialCV %>% -->
-<!--   mutate(label = "Risk Predictions", -->
-<!--          Risk_Category = ntile(Prediction, 100), -->
-<!--          Risk_Category = case_when( -->
-<!--          Risk_Category >= 90 ~ "90% to 100%", -->
-<!--          Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%", -->
-<!--          Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%", -->
-<!--          Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%", -->
-<!--          Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>% -->
-<!--   cbind( -->
-<!--     aggregate( -->
-<!--       dplyr::select(FoodInspect19) %>% mutate(inspectCount = 1), ., sum) %>% -->
-<!--       mutate(inspectCount = replace_na(inspectCount, 0))) %>% -->
-<!--   dplyr::select(label,Risk_Category, inspectCount) -->
-<!-- ``` -->
+The model is also useful in that it can be easily understood and explained relatively easily. The best outcome is one where those in power know how and why the model works. Unlike some "black box" algorithms whose inner workings are a mystery even to some of the people putting them into action, policymakers and even the public can understand this straightforward model.
 
+# 7. Meeting the Use Case: Additional Design Elements
 
+Several additional elements of this application help this model meet its use case, including tiered scheduling, a weather-specific inspection trigger mechanism, and 311 call inspection trigger mechanism.
 
-<!-- ```{r} -->
-<!-- rbind(inspect_KDE_sf, inspect_risk_sf) %>% -->
-<!--   na.omit() %>% -->
-<!--   gather(Variable, Value, -label, -Risk_Category, -geometry) %>% -->
-<!--   ggplot() + -->
-<!--     geom_sf(aes(fill = Risk_Category), colour = NA) + -->
-<!--     geom_sf(data = sample_n(FoodInspect19, 3000), size = .5, colour = "black") + -->
-<!--     facet_wrap(~label, ) + -->
-<!--     scale_fill_viridis(discrete = TRUE) + -->
-<!--     labs(title="Comparison of Kernel Density and Risk Predictions", -->
-<!--          subtitle="2017 theft risk predictions; 2018 theft") + -->
-<!--     mapTheme(title_size = 14) -->
-<!-- ``` -->
+### Tiered Scheduling
 
-<!-- Ultimately, we are able to compare our risk predictions versus kernel density of 2018 thefts.  We are especially interested in improvements in the high risk categories.  A well fit model will show the -->
-<!-- highest risk categories capturing points of high density of theft.  In the table below we see that risk predictions are slightly higher than kernel density in the highest risk category of 90 to 100% (the rightmost bar).  This indicates that our model is able to capture the latent risk despite relatively few observed thefts.  This dynamic can also be observed in the medium risk category of 50 to 69%. -->
+Once this model produces a set of predictions for a given year, its work is not yet done. Having used its modeling feature to create a set of predictions, the application assigns teams of inspectors to groups of fishnet cells with proportional numbers of predicted inspectors. These teams can get to know an area and the local health factors that are relevant to restaurants in their zone. 
 
-<!-- With increased sophistication in engineered features we would expect our model to improve its ability to capture latent risk, thus increasing its predictive power.  An important consideration for a policymaker is the definite presence of racial bias in the risk factors.  It would not be prudent to "ignore" racial features in building the model with the hope of avoiding this bias, for the issue is baked into the data even if we exclude race variables.  This is due to a number of complicated social factors such as inconsistent reporting and enforcement across neighborhood characteristics.  Implicit bias will always be present and it is the job of the data scientist to discern and minimize its impact on the predictions.  One proposal made my data scientists at Yale is to include racial features in the training of the model but exclude it in predictions (Source:[Yale Insights](https://insights.som.yale.edu/insights/can-bias-be-eliminated-from-algorithms) . -->
+The scheduling element of this application prioritizes certain restaurants within each zone to receive earlier inspections based on their individual risk designation by the Chicago Health Department (the department already ranks restaurants as "high," "medium," and "low," risk). These assessments are used as priority tiers such that restaurants with higher Health Department risk rankings are prioritized within an inspection team's focus area.
 
+#### Weather-specific Triggers
 
+Weather has been shown to have measurable impacts on food inspection pass rates. Specifically, very hot weather produces higher rates of failures. Restaurants in Chicago should be expected to follow Department of Health guidelines regardless of the weather, including during periods of extremely hot weather. A three-day period of above average whether in Chicago during the summer triggers immediate inspections of high-risk restaurants if inspections are needed at any individual locations. 
 
-<!-- ```{r} -->
-<!-- rbind(inspect_KDE_sf, inspect_risk_sf) %>% -->
-<!--   st_set_geometry(NULL) %>% na.omit() %>% -->
-<!--   gather(Variable, Value, -label, -Risk_Category) %>% -->
-<!--   group_by(label, Risk_Category) %>% -->
-<!--   summarize(countInspect = sum(Value)) %>% -->
-<!--   ungroup() %>% -->
-<!--   group_by(label) %>% -->
-<!--   mutate(Rate_of_test_set_crimes = countInspect / sum(countInspect)) %>% -->
-<!--     ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) + -->
-<!--       geom_bar(aes(fill=label), position="dodge", stat="identity") + -->
-<!--       scale_fill_viridis(discrete = TRUE) + -->
-<!--       labs(title = "Risk prediction vs. Kernel density, 2018 thefts") + -->
-<!--       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) -->
-<!-- ``` -->
+#### 3-1-1 Call trigger Mechanism
+
+Our application also makes the most of Chicago's 311 non-emergency City Services line with a mechanism to prioritize inspections in response to repeated calls. When excessive calls regarding a restaurant needing inspection are logged from different numbers (to prevent abuse of the mechanism) on multiple different days (to avoid over-penalization of specific events that result in multiple calls) over the course of a two-week period, an inspection is immediately triggered.
+
+#### Shortening the Feedback Loop
+
+Our model, supplemented with the previously mentioned additional elements, is designed with the big-picture goal of "shortening the feedback loop" in mind. The feedback loop that exists in food inspection where restaurants follow or fail to follow health codes, are inspected, and take the result into account whether they choose to follow or fail to follow health codes. 
+
+When restaurants choose unsafe practices, it is critical that this feedback loop is shortened so that there is as little chance as possible that unsafe practices lead to an outbreak such as the 2016 E. Coli outbreak in Chicago's Bridgeport neighborhood. This application works to shorten the food inspection feedback loop with solid foundation of failure prediction, enhanced by additional design elements that result in efficient inspections taking place where unsafe practices are more likely.
+
+# 8. Improvement
+
+There are several ways that the model - the foundation of the application - could be improved. First, predictions for a given year would likely be improved if they considered prospective inspection locations for that year. Ostensibly, the city has a database of locations it expects to inspect in a given year long before the year starts, and the use of this data could significantly improve the model. Additionally, more temporally-specific predictions could make scheduling inspectors more efficient. Predicting the failures expected for a quarter rather than a year would allow for better overall process. Finally, measures could be taken to ensure the model is not overly punitive of small and minority-owned businesses due to neighborhood-level factors out of the businessowners' control. A good model of inspections must consider spatial factors, and while implicit bias will always be present, but it is the job of the data scientist to discern and minimize its impact on the predictions.
